@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('404 - Page Not Found'),
+            const Text('홈 페이지'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _handleSignOut(context),

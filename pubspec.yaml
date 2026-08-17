@@ -63,6 +63,7 @@ flutter:
 
   assets:
     - .env
+    - assets/img/google_icon.png
     - assets/img/icon/
     - assets/img/logotype/
 
