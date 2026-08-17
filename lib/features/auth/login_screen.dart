@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = true);
       try {
         await _authService.syncProfile();
-        if (mounted) context.go('/home');
+        if (mounted) context.go('/info');
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
