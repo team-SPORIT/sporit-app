@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/auth_service.dart';
+import '../../shared/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,14 +65,88 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      body: Center(
-        child: _isLoading
-            ? const CircularProgressIndicator()
-            : ElevatedButton(
-                onPressed: _handleGoogleSignIn,
-                child: const Text('Google로 로그인'),
+      body: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            children: [
+              const Expanded(flex: 4, child: SizedBox()),
+              Image.asset(
+                isDark
+                    ? 'assets/img/logotype/logotype_wh_B.png'
+                    : 'assets/img/logotype/logotype_bk_B.png',
+                width: 170,
               ),
+              const SizedBox(height: 36),
+              Text(
+                '함께 태우는 열정의 불꽃',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? AppColors.bg8 : AppColors.bg2,
+                ),
+              ),
+              const Expanded(flex: 5, child: SizedBox()),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 50),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : _GoogleSignInButton(onPressed: _handleGoogleSignIn),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleSignInButton extends StatelessWidget {
+  const _GoogleSignInButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color:  isDark ? AppColors.bg0 : AppColors.bg9,
+      borderRadius: BorderRadius.circular(50),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: onPressed,
+        child: Container(
+          width: double.infinity,
+          height: 51,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(color: AppColors.bg4),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                left: 16,
+                child: Image.asset(
+                  'assets/img/google_icon.png',
+                  width: 20,
+                  height: 20,
+                ),
+              ),
+              Text(
+                'Google로 로그인',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.bg6 : AppColors.bg0,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
