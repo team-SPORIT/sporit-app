@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 50),
                 child: _isLoading
                     ? const CircularProgressIndicator()
-                    : _GoogleSignInButton(onPressed: _handleGoogleSignIn),
+                    : _GoogleSignInButton(onPressed: _handleGoogleSignIn), 
               ),
             ],
           ),
