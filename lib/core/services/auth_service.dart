@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart'
     show LaunchMode, closeInAppWebView;
@@ -18,15 +19,32 @@ class AuthService {
   static const String _oauthRedirectUrl =
       'io.supabase.sporit://login-callback/';
 
+  static const _oauthInProgressKey = 'oauth_in_progress';
+
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  Future<bool> signInWithGoogle() {
+  Future<bool> signInWithGoogle() async {
+    // 로그인 팝업이 닫히고 앱으로 돌아왔을 때, 스플래시 화면이 "방금 로그인 버튼을
+    // 눌렀던 상황"이라는 걸 구분할 수 있도록 플래그를 남겨둔다.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_oauthInProgressKey, true);
+
     return _client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: _oauthRedirectUrl,
       // 앱 밖 Safari로 나가지 않고, 인앱 팝업(SFSafariViewController/Custom Tabs)으로 띄움
       authScreenLaunchMode: LaunchMode.inAppWebView,
     );
+  }
+
+  // 스플래시 화면에서 1회성으로 확인: 로그인 버튼을 누른 직후였는지 여부를 읽고 지운다.
+  static Future<bool> consumeOAuthInProgressFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final wasInProgress = prefs.getBool(_oauthInProgressKey) ?? false;
+    if (wasInProgress) {
+      await prefs.remove(_oauthInProgressKey);
+    }
+    return wasInProgress;
   }
 
   // 로그인 딥링크를 받은 뒤 호출: iOS에서 인앱 브라우저가 자동으로 안 닫히는 경우가 있어 직접 닫아줌
