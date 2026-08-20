@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/services/auth_service.dart';
 import '../../shared/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,7 +19,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), () {
+    _init();
+  }
+
+  Future<void> _init() async {
+    // 로그인 버튼을 누른 직후 돌아온 상황이면 브랜딩 대기 없이 바로 로그인 화면으로
+    // 넘긴다. isNew 판별/응답 대기는 로그인 화면의 기존 로딩 스피너가 처리하므로
+    // 스플래시는 그 과정에서 다시 보이지 않는다.
+    final isReturningFromLogin = await AuthService.consumeOAuthInProgressFlag();
+    final delay = isReturningFromLogin
+        ? Duration.zero
+        : const Duration(seconds: 3);
+    Timer(delay, () {
       if (mounted) {
         context.go('/login');
       }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -60,6 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await _authService.signInWithGoogle();
     } catch (e) {
       if (!mounted) return;
+      // 로그인 성공 시 인앱 브라우저를 코드로 직접 닫는데(closeOAuthWebView), 그 여파로
+      // iOS에서 여기서 기다리던 launch 호출이 PlatformException으로 완료되는 경우가
+      // 있다(실제 로그인 성공 여부는 별도 리스너가 판단하므로 이 예외는 신뢰할 신호가
+      // 아니다). 그 경우는 조용히 무시하고, 그 외의 진짜 실패만 에러로 보여준다.
+      if (e is PlatformException) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(
         context,
