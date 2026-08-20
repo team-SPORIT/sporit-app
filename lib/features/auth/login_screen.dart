@@ -26,9 +26,12 @@ class _LoginScreenState extends State<LoginScreen> {
     // 딥링크가 앱이 백그라운드/미실행 상태일 때 처리되어 이미 세션이 있는 채로
     // 이 화면이 열리는 경우엔 signedIn 대신 initialSession으로 전달되므로 함께 처리한다.
     _authSubscription = _authService.authStateChanges.listen((state) async {
-      final isSignInEvent = state.event == AuthChangeEvent.signedIn ||
+      final isSignInEvent =
+          state.event == AuthChangeEvent.signedIn ||
           state.event == AuthChangeEvent.initialSession;
       if (!isSignInEvent || state.session == null) return;
+
+      unawaited(_authService.closeOAuthWebView());
 
       setState(() => _isLoading = true);
       try {
@@ -38,9 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('로그인 처리 중 오류가 발생했어요: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('로그인 처리 중 오류가 발생했어요: $e')));
       }
     });
   }
@@ -58,9 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('로그인에 실패했어요: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('로그인에 실패했어요: $e')));
     }
   }
 
@@ -94,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 50),
                 child: _isLoading
                     ? const CircularProgressIndicator()
-                    : _GoogleSignInButton(onPressed: _handleGoogleSignIn), 
+                    : _GoogleSignInButton(onPressed: _handleGoogleSignIn),
               ),
             ],
           ),
@@ -114,7 +117,7 @@ class _GoogleSignInButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
-      color:  isDark ? AppColors.bg0 : AppColors.bg9,
+      color: isDark ? AppColors.bg0 : AppColors.bg9,
       borderRadius: BorderRadius.circular(50),
       child: InkWell(
         borderRadius: BorderRadius.circular(50),

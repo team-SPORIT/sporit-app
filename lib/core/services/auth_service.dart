@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart'
+    show LaunchMode, closeInAppWebView;
 
 import '../constants/api.dart';
 
@@ -13,7 +15,8 @@ class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
 
   // AndroidManifest.xml / Info.plist에 등록된 딥링크 scheme과 반드시 일치해야 함
-  static const String _oauthRedirectUrl = 'io.supabase.sporit://login-callback/';
+  static const String _oauthRedirectUrl =
+      'io.supabase.sporit://login-callback/';
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
@@ -21,7 +24,18 @@ class AuthService {
     return _client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: _oauthRedirectUrl,
+      // 앱 밖 Safari로 나가지 않고, 인앱 팝업(SFSafariViewController/Custom Tabs)으로 띄움
+      authScreenLaunchMode: LaunchMode.inAppWebView,
     );
+  }
+
+  // 로그인 딥링크를 받은 뒤 호출: iOS에서 인앱 브라우저가 자동으로 안 닫히는 경우가 있어 직접 닫아줌
+  Future<void> closeOAuthWebView() async {
+    try {
+      await closeInAppWebView();
+    } catch (_) {
+      // 열려있는 인앱 브라우저가 없으면 무시
+    }
   }
 
   // 구글 로그인 성공 직후 백엔드(/auth/sync)에 프로필을 동기화.
