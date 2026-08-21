@@ -19,6 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService.instance;
   StreamSubscription<AuthState>? _authSubscription;
   bool _isLoading = false;
+  // signedIn과 initialSession이 거의 동시에 연달아 들어올 수 있어서, syncProfile()이
+  // 중복 호출되는 걸 막기 위한 가드. 두 번째 호출이 이미 생성된 프로필을 보고
+  // isNew:false를 반환하면서 최초 가입인데도 /info로 안 가는 버그가 있었다.
+  bool _hasHandledSignIn = false;
 
   @override
   void initState() {
@@ -31,6 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
           state.event == AuthChangeEvent.signedIn ||
           state.event == AuthChangeEvent.initialSession;
       if (!isSignInEvent || state.session == null) return;
+      if (_hasHandledSignIn) return;
+      _hasHandledSignIn = true;
 
       unawaited(_authService.closeOAuthWebView());
 
@@ -40,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         context.go(isNew ? '/info' : '/home');
       } catch (e) {
+        _hasHandledSignIn = false;
         if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
