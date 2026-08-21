@@ -70,7 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('로그인에 실패했어요: $e')));
+      return;
     }
+    // 로그인 창을 닫기만 하고 로그인은 완료하지 않은 경우 예외 없이 여기로 돌아오므로
+    // 로딩 상태를 풀어준다. 실제로 로그인에 성공했다면 authStateChanges 리스너가
+    // 곧바로 다시 로딩 상태로 전환하고 다음 화면으로 넘어간다.
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
