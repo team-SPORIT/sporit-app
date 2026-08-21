@@ -34,6 +34,9 @@ class AuthService {
       redirectTo: _oauthRedirectUrl,
       // 앱 밖 Safari로 나가지 않고, 인앱 팝업(SFSafariViewController/Custom Tabs)으로 띄움
       authScreenLaunchMode: LaunchMode.inAppWebView,
+      // SFSafariViewController가 Safari와 구글 로그인 세션을 공유해서, 이게 없으면
+      // 계정 선택 화면 없이 이전에 로그인했던 계정으로 자동 진행돼버린다.
+      queryParams: const {'prompt': 'select_account'},
     );
   }
 
