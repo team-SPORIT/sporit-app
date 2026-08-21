@@ -1,9 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show PlatformException;
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/auth_service.dart';
 import '../../shared/app_colors.dart';
@@ -17,41 +13,38 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService.instance;
-  StreamSubscription<AuthState>? _authSubscription;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // 구글 로그인 후 브라우저 -> 앱 딥링크 복귀 시 signedIn 이벤트가 발생함.
-    // 딥링크가 앱이 백그라운드/미실행 상태일 때 처리되어 이미 세션이 있는 채로
-    // 이 화면이 열리는 경우엔 signedIn 대신 initialSession으로 전달되므로 함께 처리한다.
-    _authSubscription = _authService.authStateChanges.listen((state) async {
-      final isSignInEvent =
-          state.event == AuthChangeEvent.signedIn ||
-          state.event == AuthChangeEvent.initialSession;
-      if (!isSignInEvent || state.session == null) return;
+    // 로그인 감지 -> 동기화 -> 화면 이동은 AuthService.startSignInListener()가
+    // 앱 전체에서 한 번만 처리한다(이 화면이 중간에 다시 만들어져도 안전하도록).
+    // 여기서는 그 진행 상태만 관찰해서 스피너/에러 메시지를 보여준다.
+    _isLoading = _authService.isSyncingNotifier.value;
+    _authService.isSyncingNotifier.addListener(_handleSyncingChanged);
+    _authService.syncErrorNotifier.addListener(_handleSyncError);
+  }
 
-      unawaited(_authService.closeOAuthWebView());
+  void _handleSyncingChanged() {
+    if (!mounted) return;
+    setState(() => _isLoading = _authService.isSyncingNotifier.value);
+  }
 
-      setState(() => _isLoading = true);
-      try {
-        final isNew = await _authService.syncProfile();
-        if (!mounted) return;
-        context.go(isNew ? '/info' : '/home');
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('로그인 처리 중 오류가 발생했어요: $e')));
-      }
-    });
+  void _handleSyncError() {
+    final message = _authService.syncErrorNotifier.value;
+    if (message == null) return;
+    _authService.syncErrorNotifier.value = null;
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   void dispose() {
-    _authSubscription?.cancel();
+    _authService.isSyncingNotifier.removeListener(_handleSyncingChanged);
+    _authService.syncErrorNotifier.removeListener(_handleSyncError);
     super.dispose();
   }
 
@@ -73,8 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     // 로그인 창을 닫기만 하고 로그인은 완료하지 않은 경우 예외 없이 여기로 돌아오므로
-    // 로딩 상태를 풀어준다. 실제로 로그인에 성공했다면 authStateChanges 리스너가
-    // 곧바로 다시 로딩 상태로 전환하고 다음 화면으로 넘어간다.
+    // 로딩 상태를 풀어준다. 실제로 로그인에 성공했다면 AuthService의 전역 리스너가
+    // isSyncingNotifier를 통해 곧바로 다시 로딩 상태로 전환하고 다음 화면으로 넘어간다.
     if (mounted) setState(() => _isLoading = false);
   }
 

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart'
     show LaunchMode, closeInAppWebView;
 
 import '../constants/api.dart';
+import '../routes/app_router.dart';
 
 class AuthService {
   AuthService._();
@@ -21,7 +24,45 @@ class AuthService {
 
   static const _oauthInProgressKey = 'oauth_in_progress';
 
+  // 로그인 화면이 로딩 스피너를 보여줄 수 있게 관찰하는 상태.
+  final ValueNotifier<bool> isSyncingNotifier = ValueNotifier(false);
+  // 동기화 실패 메시지. 로그인 화면이 떠 있으면 스낵바로 보여주고 null로 되돌린다.
+  final ValueNotifier<String?> syncErrorNotifier = ValueNotifier(null);
+
+  bool _hasStartedSignInListener = false;
+
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+
+  // signedIn 딥링크가 GoRouter의 라우팅으로도 잡혀서 스플래시->로그인 화면이 다시
+  // 만들어지는 경우가 있다. 그러면 로그인 화면 위젯이 여러 번 새로 생기고, 먼저
+  // syncProfile()을 시작한 인스턴스가 응답을 받기 전에 사라져버려서 화면 전환이
+  // 안 되는 문제가 있었다. 그래서 이 로그인 감지 -> 동기화 -> 이동 로직을 화면에
+  // 묶지 않고, 앱이 켜져있는 내내 한 번만 살아있는 이 서비스에서 처리하고,
+  // 이동도 BuildContext 없이 전역 router로 직접 한다.
+  void startSignInListener() {
+    if (_hasStartedSignInListener) return;
+    _hasStartedSignInListener = true;
+
+    authStateChanges.listen((state) async {
+      final isSignInEvent =
+          state.event == AuthChangeEvent.signedIn ||
+          state.event == AuthChangeEvent.initialSession;
+      if (!isSignInEvent || state.session == null) return;
+      if (isSyncingNotifier.value) return;
+
+      isSyncingNotifier.value = true;
+      unawaited(closeOAuthWebView());
+
+      try {
+        final isNew = await syncProfile();
+        router.go(isNew ? '/info' : '/home');
+      } catch (e) {
+        syncErrorNotifier.value = '로그인 처리 중 오류가 발생했어요: $e';
+      } finally {
+        isSyncingNotifier.value = false;
+      }
+    });
+  }
 
   Future<bool> signInWithGoogle() async {
     // 로그인 팝업이 닫히고 앱으로 돌아왔을 때, 스플래시 화면이 "방금 로그인 버튼을
