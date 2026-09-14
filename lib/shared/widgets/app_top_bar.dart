@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/services/theme_controller.dart';
 import '../app_colors.dart';
+import '../app_theme.dart';
 
 // 홈 등 메인 화면들이 공통으로 쓰는 상단바. 로고 / 추가 버튼 / 프로필 순으로 배치한다.
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
@@ -28,11 +30,12 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              Image.asset(
-                isDark
-                    ? 'assets/img/logotype/logotype_wh_B.png'
-                    : 'assets/img/logotype/logotype_bk_B.png',
-                width: 116,
+              ValueListenableBuilder<AppTheme>(
+                valueListenable: ThemeController.instance,
+                builder: (context, appTheme, _) => Image.asset(
+                  appTheme.logotypeAsset(isDark: isDark),
+                  width: 116,
+                ),
               ),
               const Spacer(),
               _AddButton(onPressed: onAddPressed, isDark: isDark),
