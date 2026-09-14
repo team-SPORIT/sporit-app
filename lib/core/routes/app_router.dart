@@ -5,6 +5,7 @@ import '../../features/splash/splash_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/info_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/mypage/mypage_screen.dart';
 
 CustomTransitionPage<void> _fadePage(GoRouterState state, Widget child) {
   return CustomTransitionPage(
@@ -35,6 +36,10 @@ final router = GoRouter(
     GoRoute(
       path: '/info',
       pageBuilder: (context, state) => _fadePage(state, const InfoScreen()),
+    ),
+    GoRoute(
+      path: '/mypage',
+      pageBuilder: (context, state) => _fadePage(state, const MypageScreen()),
     ),
   ],
 );
