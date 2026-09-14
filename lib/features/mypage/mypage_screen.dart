@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/models/profile.dart';
 import '../../core/models/user_exercise.dart';
@@ -28,6 +29,7 @@ class _MypageScreenState extends State<MypageScreen> {
   // 삭제 요청이 끝나기 전에 같은 항목을 또 누르는 걸 막는다.
   final Set<String> _deletingIds = {};
   bool _isSavingTheme = false;
+  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -73,7 +75,13 @@ class _MypageScreenState extends State<MypageScreen> {
   Future<void> _handleAddExercise() async {
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => const _AddExerciseDialog(),
+      builder: (_) => const _TextInputDialog(
+        title: '선호 운동 추가',
+        hintText: '배드민턴, 농구',
+        // 서버의 name 컬럼이 VARCHAR(30)이라 입력도 같은 길이로 제한한다.
+        maxLength: 30,
+        confirmText: '추가',
+      ),
     );
     if (name == null || name.isEmpty) return;
 
@@ -100,6 +108,56 @@ class _MypageScreenState extends State<MypageScreen> {
       _showMessage('$e');
     } finally {
       if (mounted) setState(() => _deletingIds.remove(exercise.id));
+    }
+  }
+
+  Future<void> _handleEditAvatar() async {
+    if (_isUploadingAvatar) return;
+
+    // 원본 사진은 5MB를 넘기 쉬워서, 고르는 단계에서 프로필에 필요한 크기로 줄인다.
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final updated = await ProfileService.instance.uploadAvatar(picked.path);
+      if (!mounted) return;
+      setState(() => _profile = updated);
+    } catch (e) {
+      _showMessage('$e');
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  Future<void> _handleEditNickname() async {
+    final current = _profile?.nickname;
+    if (current == null) return;
+
+    final nickname = await showDialog<String>(
+      context: context,
+      builder: (_) => _TextInputDialog(
+        title: '이름 수정',
+        initialValue: current,
+        hintText: '이름을 입력해주세요',
+        // 서버의 nickname 컬럼이 VARCHAR(50)이라 입력도 같은 길이로 제한한다.
+        maxLength: 50,
+        confirmText: '저장',
+      ),
+    );
+    if (nickname == null || nickname == current) return;
+
+    try {
+      final updated = await ProfileService.instance.updateNickname(nickname);
+      if (!mounted) return;
+      setState(() => _profile = updated);
+    } catch (e) {
+      _showMessage('$e');
     }
   }
 
@@ -246,15 +304,22 @@ class _MypageScreenState extends State<MypageScreen> {
           _SectionTitle(title: '프로필', textColor: textColor),
           const SizedBox(height: 16),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _Avatar(imageUrl: profile?.profileImage),
-              const Spacer(),
-              // TODO: 프로필 이미지 수정 기능이 정해지면 연결한다.
-              _EditLabel(label: '프로필 수정하기', textColor: textColor),
+              _Avatar(
+                imageUrl: profile?.profileImage,
+                isUploading: _isUploadingAvatar,
+              ),
+              _EditLabel(
+                label: '프로필사진 수정하기',
+                textColor: textColor,
+                onTap: _handleEditAvatar,
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
                 child: _NicknamePill(
@@ -263,9 +328,12 @@ class _MypageScreenState extends State<MypageScreen> {
                   borderColor: borderColor,
                 ),
               ),
-              const Spacer(),
-              // TODO: 이름 수정 기능이 정해지면 연결한다.
-              _EditLabel(label: '이름 수정하기', textColor: textColor),
+              const SizedBox(width: 16),
+              _EditLabel(
+                label: '이름 수정하기',
+                textColor: textColor,
+                onTap: _handleEditNickname,
+              ),
             ],
           ),
           const SizedBox(height: 32),
@@ -326,9 +394,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({this.imageUrl});
+  const _Avatar({this.imageUrl, this.isUploading = false});
 
   final String? imageUrl;
+  final bool isUploading;
 
   static const double _size = 70;
 
@@ -344,34 +413,60 @@ class _Avatar extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       clipBehavior: Clip.antiAlias,
-      child: url == null
-          ? null
-          : Image.network(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (url != null)
+            Image.network(
               url,
               fit: BoxFit.cover,
               // 이미지를 못 불러오면 기본 회색 원만 보여준다.
               errorBuilder: (context, error, stackTrace) =>
                   const SizedBox.shrink(),
             ),
+          if (isUploading)
+            Container(
+              color: AppColors.bg0.withValues(alpha: 0.5),
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.bg9),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
 
 class _EditLabel extends StatelessWidget {
-  const _EditLabel({required this.label, required this.textColor});
+  const _EditLabel({
+    required this.label,
+    required this.textColor,
+    required this.onTap,
+  });
 
   final String label;
   final Color textColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: TextStyle(fontSize: 13, color: textColor)),
-        const SizedBox(width: 4),
-        Icon(Icons.chevron_right, size: 20, color: textColor),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, color: textColor)),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right, size: 20, color: textColor),
+        ],
+      ),
     );
   }
 }
@@ -619,16 +714,31 @@ class _LoadErrorView extends StatelessWidget {
   }
 }
 
-// 선호 운동 이름을 입력받는 다이얼로그. 추가하면 입력한 이름을 반환한다.
-class _AddExerciseDialog extends StatefulWidget {
-  const _AddExerciseDialog();
+// 한 줄짜리 값을 입력받는 다이얼로그. 확인을 누르면 입력한 값을, 취소하거나
+// 비워두면 null을 반환한다.
+class _TextInputDialog extends StatefulWidget {
+  const _TextInputDialog({
+    required this.title,
+    required this.hintText,
+    required this.maxLength,
+    required this.confirmText,
+    this.initialValue,
+  });
+
+  final String title;
+  final String hintText;
+  final int maxLength;
+  final String confirmText;
+  final String? initialValue;
 
   @override
-  State<_AddExerciseDialog> createState() => _AddExerciseDialogState();
+  State<_TextInputDialog> createState() => _TextInputDialogState();
 }
 
-class _AddExerciseDialogState extends State<_AddExerciseDialog> {
-  final _controller = TextEditingController();
+class _TextInputDialogState extends State<_TextInputDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue,
+  );
 
   @override
   void dispose() {
@@ -637,34 +747,30 @@ class _AddExerciseDialogState extends State<_AddExerciseDialog> {
   }
 
   void _submit() {
-    final name = _controller.text.trim();
-    if (name.isEmpty) return;
-    Navigator.pop(context, name);
+    final value = _controller.text.trim();
+    if (value.isEmpty) return;
+    Navigator.pop(context, value);
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('선호 운동 추가', style: TextStyle(fontSize: 16)),
+      title: Text(widget.title, style: const TextStyle(fontSize: 16)),
       content: TextField(
         controller: _controller,
         autofocus: true,
-        // 서버의 name 컬럼이 VARCHAR(30)이라 입력도 같은 길이로 제한한다.
-        maxLength: 30,
+        maxLength: widget.maxLength,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          hintText: '배드민턴, 농구',
-          counterText: '',
-        ),
+        decoration: InputDecoration(hintText: widget.hintText, counterText: ''),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('취소', style: TextStyle(color: AppColors.bg4)),
         ),
-        TextButton(onPressed: _submit, child: const Text('추가')),
+        TextButton(onPressed: _submit, child: Text(widget.confirmText)),
       ],
     );
   }

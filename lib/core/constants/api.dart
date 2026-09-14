@@ -7,6 +7,7 @@ class Api {
 
   static String get authSync => '$baseUrl/auth/sync';
   static String get profilesMe => '$baseUrl/profiles/me';
+  static String get profilesAvatar => '$baseUrl/profiles/me/avatar';
   static String get exercises => '$baseUrl/exercises';
   static String get exercisesMe => '$baseUrl/exercises/me';
   static String exerciseById(String id) => '$baseUrl/exercises/$id';
