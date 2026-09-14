@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart'
 import '../../shared/app_theme.dart';
 import '../constants/api.dart';
 import '../routes/app_router.dart';
+import 'splash_gate.dart';
 import 'theme_controller.dart';
 
 class AuthService {
@@ -57,6 +58,9 @@ class AuthService {
 
       try {
         final isNew = await syncProfile();
+        // 스플래시가 /login으로 덮어쓰지 않도록, 기다리기 전에 먼저 선점한다.
+        SplashGate.instance.claimNavigation();
+        await SplashGate.instance.wait();
         router.go(isNew ? '/info' : '/home');
       } catch (e) {
         syncErrorNotifier.value = '로그인 처리 중 오류가 발생했어요: $e';
