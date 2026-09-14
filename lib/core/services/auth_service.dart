@@ -8,8 +8,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart'
     show LaunchMode, closeInAppWebView;
 
+import '../../shared/app_theme.dart';
 import '../constants/api.dart';
 import '../routes/app_router.dart';
+import 'theme_controller.dart';
 
 class AuthService {
   AuthService._();
@@ -117,8 +119,23 @@ class AuthService {
       throw Exception('프로필 동기화 실패 (${response.statusCode})');
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    // sync 응답이 프로필 행 전체라서, 저장해둔 테마를 여기서 바로 적용할 수 있다.
+    ThemeController.instance.value = AppTheme.fromApiValue(body['theme']);
     return body['isNew'] as bool? ?? false;
+  }
+
+  // 백엔드 호출에 붙일 인증 헤더. 로그인 세션이 없으면 예외를 던진다.
+  Map<String, String> authHeaders({bool json = false}) {
+    final accessToken = _client.auth.currentSession?.accessToken;
+    if (accessToken == null) {
+      throw StateError('로그인 세션이 없습니다.');
+    }
+    return {
+      'Authorization': 'Bearer $accessToken',
+      if (json) 'Content-Type': 'application/json',
+    };
   }
 
   Future<void> signOut() => _client.auth.signOut();
