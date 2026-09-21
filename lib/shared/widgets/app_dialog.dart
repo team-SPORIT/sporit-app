@@ -41,7 +41,7 @@ class AppDialog extends StatelessWidget {
             // 내용이 없는 확인용 다이얼로그는 제목과 버튼만 남아 허전해지므로
             // 그 경우에 여백을 더 준다.
             if (content == null)
-              const SizedBox(height: 32)
+              const SizedBox(height: 82)
             else ...[
               const SizedBox(height: 20),
               content!,
