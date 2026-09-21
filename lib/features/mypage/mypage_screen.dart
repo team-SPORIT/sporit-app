@@ -13,6 +13,7 @@ import '../../shared/app_theme.dart';
 import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/app_input_dialog.dart';
 import '../../shared/widgets/app_pill_button.dart';
+import '../../shared/widgets/exercise_chip.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({super.key});
@@ -354,10 +355,8 @@ class _MypageScreenState extends State<MypageScreen> {
             runSpacing: 8,
             children: [
               for (final exercise in _exercises)
-                _ExerciseChip(
+                ExerciseChip(
                   label: exercise.name,
-                  textColor: textColor,
-                  borderColor: borderColor,
                   isDeleting: _deletingIds.contains(exercise.id),
                   onDelete: () => _handleDeleteExercise(exercise),
                 ),
@@ -560,70 +559,6 @@ class _ThemeCircle extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-      ),
-    );
-  }
-}
-
-class _ExerciseChip extends StatelessWidget {
-  const _ExerciseChip({
-    required this.label,
-    required this.textColor,
-    required this.borderColor,
-    required this.isDeleting,
-    required this.onDelete,
-  });
-
-  final String label;
-  final Color textColor;
-  final Color borderColor;
-  final bool isDeleting;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 10, top: 10, bottom: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: borderColor, width: 0.5),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // 삭제 중에는 내용을 감추기만 하고 자리는 그대로 둔다. 아예 빼버리면
-          // 칩 크기가 줄면서 옆 칩들이 밀려 움직인다.
-          Opacity(
-            opacity: isDeleting ? 0 : 1,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: isDeleting ? null : onDelete,
-                  child: Icon(Icons.close, size: 18, color: textColor),
-                ),
-              ],
-            ),
-          ),
-          if (isDeleting)
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(textColor),
-              ),
-            ),
-        ],
       ),
     );
   }
