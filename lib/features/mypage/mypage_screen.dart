@@ -10,9 +10,9 @@ import '../../core/services/profile_service.dart';
 import '../../core/services/theme_controller.dart';
 import '../../shared/app_colors.dart';
 import '../../shared/app_theme.dart';
-
-// 회원 탈퇴 버튼 전용 강조색 (디자인상 이 화면에서만 쓰인다)
-const _withdrawColor = Color(0xffD32F2F);
+import '../../shared/widgets/app_dialog.dart';
+import '../../shared/widgets/app_input_dialog.dart';
+import '../../shared/widgets/app_pill_button.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({super.key});
@@ -73,15 +73,13 @@ class _MypageScreenState extends State<MypageScreen> {
   }
 
   Future<void> _handleAddExercise() async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => const _TextInputDialog(
-        title: '선호 운동 추가',
-        hintText: '배드민턴, 농구',
-        // 서버의 name 컬럼이 VARCHAR(30)이라 입력도 같은 길이로 제한한다.
-        maxLength: 30,
-        confirmText: '추가',
-      ),
+    final name = await AppInputDialog.show(
+      context,
+      title: '선호하는 운동을 추가 해주세요',
+      hintText: '배드민턴, 농구',
+      confirmText: '추가하기',
+      // 서버의 name 컬럼이 VARCHAR(30)이라 입력도 같은 길이로 제한한다.
+      maxLength: 30,
     );
     if (name == null || name.isEmpty) return;
 
@@ -139,16 +137,14 @@ class _MypageScreenState extends State<MypageScreen> {
     final current = _profile?.nickname;
     if (current == null) return;
 
-    final nickname = await showDialog<String>(
-      context: context,
-      builder: (_) => _TextInputDialog(
-        title: '이름 수정',
-        initialValue: current,
-        hintText: '이름을 입력해주세요',
-        // 서버의 nickname 컬럼이 VARCHAR(50)이라 입력도 같은 길이로 제한한다.
-        maxLength: 50,
-        confirmText: '저장',
-      ),
+    final nickname = await AppInputDialog.show(
+      context,
+      title: '이름을 수정해주세요',
+      hintText: '이름을 입력해주세요',
+      confirmText: '수정하기',
+      initialValue: current,
+      // 서버의 nickname 컬럼이 VARCHAR(50)이라 입력도 같은 길이로 제한한다.
+      maxLength: 50,
     );
     if (nickname == null || nickname == current) return;
 
@@ -180,7 +176,21 @@ class _MypageScreenState extends State<MypageScreen> {
   }
 
   Future<void> _handleSignOut() async {
-    final confirmed = await _confirm(title: '로그아웃 할까요?', confirmText: '로그아웃');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppDialog(
+        title: '로그아웃 하시겠습니까?',
+        actions: [
+          AppPillButton(
+            label: '로그아웃',
+            textColor: AppColors.redWaring,
+            borderColor: AppColors.redWaring,
+            height: 48,
+            onPressed: () => Navigator.pop(dialogContext, true),
+          ),
+        ],
+      ),
+    );
     if (confirmed != true) return;
 
     await AuthService.instance.signOut();
@@ -202,35 +212,24 @@ class _MypageScreenState extends State<MypageScreen> {
     }
   }
 
-  Future<bool?> _confirm({required String title, required String confirmText}) {
-    return showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: const TextStyle(fontSize: 16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('취소', style: TextStyle(color: AppColors.bg4)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(confirmText),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
     final borderColor = isDark ? AppColors.bg9 : AppColors.bg0;
     final dividerColor = isDark ? AppColors.bg2 : AppColors.bg7;
+    // padding은 키보드가 올라오면 0이 돼버리지만 viewPadding은 그대로라,
+    // 홈 인디케이터 높이만큼의 여백을 키보드와 무관하게 유지할 수 있다.
+    final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Scaffold(
+      // 입력은 다이얼로그에서만 하므로 키보드에 맞춰 본문을 줄일 필요가 없다.
+      // 줄이면 화면 아래 고정된 버튼들이 키보드를 따라 올라와버린다.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
+        // 아래 여백은 아래에서 직접 준다. SafeArea에 맡기면 키보드가 오르내릴 때마다
+        // 여백이 사라졌다 돌아오면서 버튼이 내려갔다 올라간다.
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -259,20 +258,20 @@ class _MypageScreenState extends State<MypageScreen> {
                   : _buildContent(textColor, borderColor),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottomSafeInset),
               child: Column(
                 children: [
-                  _OutlinedActionButton(
+                  AppPillButton(
                     label: '로그아웃',
                     textColor: textColor,
                     borderColor: isDark ? AppColors.bg2 : AppColors.bg6,
                     onPressed: _handleSignOut,
                   ),
                   const SizedBox(height: 12),
-                  _OutlinedActionButton(
+                  AppPillButton(
                     label: '회원 탈퇴',
-                    textColor: _withdrawColor,
-                    borderColor: _withdrawColor,
+                    textColor: AppColors.redWaring,
+                    borderColor: AppColors.redWaring,
                     onPressed: _handleWithdraw,
                   ),
                 ],
@@ -359,6 +358,7 @@ class _MypageScreenState extends State<MypageScreen> {
                   label: exercise.name,
                   textColor: textColor,
                   borderColor: borderColor,
+                  isDeleting: _deletingIds.contains(exercise.id),
                   onDelete: () => _handleDeleteExercise(exercise),
                 ),
               _AddExerciseButton(
@@ -570,12 +570,14 @@ class _ExerciseChip extends StatelessWidget {
     required this.label,
     required this.textColor,
     required this.borderColor,
+    required this.isDeleting,
     required this.onDelete,
   });
 
   final String label;
   final Color textColor;
   final Color borderColor;
+  final bool isDeleting;
   final VoidCallback onDelete;
 
   @override
@@ -586,22 +588,41 @@ class _ExerciseChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(50),
         border: Border.all(color: borderColor, width: 0.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: textColor,
+          // 삭제 중에는 내용을 감추기만 하고 자리는 그대로 둔다. 아예 빼버리면
+          // 칩 크기가 줄면서 옆 칩들이 밀려 움직인다.
+          Opacity(
+            opacity: isDeleting ? 0 : 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: isDeleting ? null : onDelete,
+                  child: Icon(Icons.close, size: 18, color: textColor),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(Icons.close, size: 18, color: textColor),
-          ),
+          if (isDeleting)
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor),
+              ),
+            ),
         ],
       ),
     );
@@ -638,49 +659,6 @@ class _AddExerciseButton extends StatelessWidget {
   }
 }
 
-class _OutlinedActionButton extends StatelessWidget {
-  const _OutlinedActionButton({
-    required this.label,
-    required this.textColor,
-    required this.borderColor,
-    required this.onPressed,
-  });
-
-  final String label;
-  final Color textColor;
-  final Color borderColor;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(50),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(50),
-        onTap: onPressed,
-        child: Container(
-          width: double.infinity,
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: borderColor),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _LoadErrorView extends StatelessWidget {
   const _LoadErrorView({
     required this.message,
@@ -710,68 +688,6 @@ class _LoadErrorView extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// 한 줄짜리 값을 입력받는 다이얼로그. 확인을 누르면 입력한 값을, 취소하거나
-// 비워두면 null을 반환한다.
-class _TextInputDialog extends StatefulWidget {
-  const _TextInputDialog({
-    required this.title,
-    required this.hintText,
-    required this.maxLength,
-    required this.confirmText,
-    this.initialValue,
-  });
-
-  final String title;
-  final String hintText;
-  final int maxLength;
-  final String confirmText;
-  final String? initialValue;
-
-  @override
-  State<_TextInputDialog> createState() => _TextInputDialogState();
-}
-
-class _TextInputDialogState extends State<_TextInputDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialValue,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final value = _controller.text.trim();
-    if (value.isEmpty) return;
-    Navigator.pop(context, value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(widget.title, style: const TextStyle(fontSize: 16)),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        maxLength: widget.maxLength,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _submit(),
-        decoration: InputDecoration(hintText: widget.hintText, counterText: ''),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('취소', style: TextStyle(color: AppColors.bg4)),
-        ),
-        TextButton(onPressed: _submit, child: Text(widget.confirmText)),
-      ],
     );
   }
 }
