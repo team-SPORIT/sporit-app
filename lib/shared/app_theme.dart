@@ -22,8 +22,8 @@ enum AppTheme {
   // 로고/아이콘 에셋 파일명 접미사 (logotype_wh_B.png, icon_B.png ...)
   final String assetSuffix;
 
-  // 서버 기본값과 동일하게 맞춘다(profiles.theme의 @default(pink)).
-  static const AppTheme fallback = AppTheme.pink;
+  // 저장된 테마를 아직 모를 때(첫 실행, 캐시 없음) 쓰는 기본 테마.
+  static const AppTheme fallback = AppTheme.blue;
 
   static AppTheme fromApiValue(Object? value) {
     return AppTheme.values.firstWhere(
