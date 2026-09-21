@@ -108,7 +108,6 @@ class _AppInputDialogState extends State<AppInputDialog> {
       ],
       content: TextField(
         controller: _controller,
-        autofocus: true,
         maxLength: widget.maxLength,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
