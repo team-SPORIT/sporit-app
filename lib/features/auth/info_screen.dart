@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants/api.dart';
 import '../../shared/app_colors.dart';
+import '../../shared/widgets/exercise_chip.dart';
 
 const _totalSteps = 2;
 
@@ -132,6 +133,7 @@ class InfoScreenState extends State<InfoScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final themeColor = Theme.of(context).colorScheme.primary;
     final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
     final hintColor = isDark ? AppColors.bg5 : AppColors.bg4;
     final trackColor = isDark ? AppColors.bg3 : AppColors.bg5;
@@ -211,8 +213,9 @@ class InfoScreenState extends State<InfoScreen> {
                         ? null
                         : (_isLastPage ? _handleComplete : _goToNextPage),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.main,
-                      disabledBackgroundColor: AppColors.main,
+                      // 저장 중에도 색이 흐려지지 않게 두 값을 같게 둔다.
+                      backgroundColor: themeColor,
+                      disabledBackgroundColor: themeColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
@@ -363,12 +366,7 @@ class _SportStepContent extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final tag in tags)
-                _SportChip(
-                  label: tag,
-                  borderColor: borderColor,
-                  textColor: textColor,
-                  onDelete: () => onDeleteTag(tag),
-                ),
+                ExerciseChip(label: tag, onDelete: () => onDeleteTag(tag)),
             ],
           ),
           const SizedBox(height: 12),
@@ -425,49 +423,6 @@ class _AddSportButton extends StatelessWidget {
           border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Icon(Icons.add, size: 16, color: iconColor),
-      ),
-    );
-  }
-}
-
-class _SportChip extends StatelessWidget {
-  const _SportChip({
-    required this.label,
-    required this.borderColor,
-    required this.textColor,
-    required this.onDelete,
-  });
-
-  final String label;
-  final Color borderColor;
-  final Color textColor;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 10, top: 10, bottom: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: borderColor, width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(Icons.close, size: 18, color: textColor),
-          ),
-        ],
       ),
     );
   }

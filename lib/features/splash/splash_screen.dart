@@ -1,10 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/auth_service.dart';
-import '../../shared/app_colors.dart';
+import '../../core/services/splash_gate.dart';
+import '../../core/services/theme_controller.dart';
+import '../../shared/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,8 +14,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  static const _mainColor = AppColors.main;
-
   @override
   void initState() {
     super.initState();
@@ -23,25 +21,27 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
-    // 로그인 버튼을 누른 직후 돌아온 상황이면 브랜딩 대기 없이 바로 로그인 화면으로
-    // 넘긴다. isNew 판별/응답 대기는 로그인 화면의 기존 로딩 스피너가 처리하므로
-    // 스플래시는 그 과정에서 다시 보이지 않는다.
-    final isReturningFromLogin = await AuthService.consumeOAuthInProgressFlag();
-    final delay = isReturningFromLogin
-        ? Duration.zero
-        : const Duration(seconds: 3);
-    Timer(delay, () {
-      if (mounted) {
-        context.go('/login');
-      }
-    });
+    // 로그인 팝업에서 막 돌아온 경우를 구분하려고 남겨둔 플래그를 정리한다.
+    // (최소 노출 시간은 앱을 켠 시점부터 재므로, 같은 실행 중에 스플래시가 다시
+    // 만들어진 이 경우에는 이미 시간이 지나 곧바로 넘어간다.)
+    await AuthService.consumeOAuthInProgressFlag();
+
+    await SplashGate.instance.wait();
+
+    // 로그인된 사용자는 AuthService의 전역 리스너가 /home(/info)으로 보낸다.
+    if (SplashGate.instance.isNavigationClaimed) return;
+    if (mounted) context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: _mainColor,
-      body: Center(
+    // 스플래시가 떠 있는 동안 로그인 동기화가 끝나 테마가 바뀔 수 있어서
+    // 값을 구독해둔다(캐시된 값과 서버 값이 다른 경우).
+    return ValueListenableBuilder<AppTheme>(
+      valueListenable: ThemeController.instance,
+      builder: (context, appTheme, child) =>
+          Scaffold(backgroundColor: appTheme.color, body: child),
+      child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [

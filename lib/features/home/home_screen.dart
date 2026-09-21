@@ -1,33 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/services/auth_service.dart';
+import '../../shared/widgets/app_top_bar.dart';
 
-// TODO: 홈 화면 구현 전까지의 임시 플레이스홀더
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  Future<void> _handleSignOut(BuildContext context) async {
-    await AuthService.instance.signOut();
-    if (context.mounted) context.go('/login');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('홈 페이지'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _handleSignOut(context),
-              child: const Text('로그아웃'),
-            ),
-          ],
-        ),
-      ),
-    );
+    // TODO: 상단바 아래 메인 요소(연속 기록 카드, 함께 운동중 목록, 하단 네비게이션) 구현
+    return const Scaffold(appBar: AppTopBar(), body: SizedBox.shrink());
   }
 }

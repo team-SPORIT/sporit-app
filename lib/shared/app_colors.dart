@@ -16,4 +16,6 @@ abstract final class AppColors {
   static const bg7 = Color(0xffEDEDED);
   static const bg8 = Color(0xffF7F7F7);
   static const bg9 = Color(0xffFFFFFF);
+
+  static const redWaring = Color(0xFFC70101);
 }
