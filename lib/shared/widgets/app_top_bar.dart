@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/models/profile.dart';
+import '../../core/services/profile_controller.dart';
 import '../../core/services/theme_controller.dart';
 import '../app_colors.dart';
 import '../app_theme.dart';
@@ -86,17 +88,33 @@ class _ProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: 프로필 이미지가 준비되면 회색 원 대신 사용자 이미지를 보여준다.
     return InkWell(
       borderRadius: BorderRadius.circular(50),
       onTap: onPressed,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: const BoxDecoration(
-          color: AppColors.bg4,
-          shape: BoxShape.circle,
-        ),
+      child: ValueListenableBuilder<Profile?>(
+        valueListenable: ProfileController.instance,
+        builder: (context, profile, _) {
+          final imageUrl = profile?.profileImage;
+
+          return Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: AppColors.bg4,
+              shape: BoxShape.circle,
+            ),
+            clipBehavior: Clip.antiAlias,
+            // 사진이 없거나 못 불러오면 기본 회색 원만 보여준다.
+            child: imageUrl == null
+                ? null
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox.shrink(),
+                  ),
+          );
+        },
       ),
     );
   }

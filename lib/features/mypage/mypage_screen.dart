@@ -6,6 +6,7 @@ import '../../core/models/profile.dart';
 import '../../core/models/user_exercise.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/exercise_service.dart';
+import '../../core/services/profile_controller.dart';
 import '../../core/services/profile_service.dart';
 import '../../core/services/theme_controller.dart';
 import '../../shared/app_colors.dart';
@@ -23,7 +24,10 @@ class MypageScreen extends StatefulWidget {
 }
 
 class _MypageScreenState extends State<MypageScreen> {
-  Profile? _profile;
+  // 상단바도 같은 값을 보여줘야 해서 프로필은 화면이 아니라 공유 컨트롤러가 들고 있다.
+  Profile? get _profile => ProfileController.instance.value;
+  set _profile(Profile? profile) => ProfileController.instance.value = profile;
+
   List<UserExercise> _exercises = [];
   bool _isLoading = true;
   String? _loadError;
