@@ -221,7 +221,7 @@ class _MypageScreenState extends State<MypageScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
-    final borderColor = isDark ? AppColors.bg9 : AppColors.bg0;
+    const borderColor = AppColors.bg4;
     final dividerColor = isDark ? AppColors.bg2 : AppColors.bg7;
     // padding은 키보드가 올라오면 0이 돼버리지만 viewPadding은 그대로라,
     // 홈 인디케이터 높이만큼의 여백을 키보드와 무관하게 유지할 수 있다.
@@ -269,7 +269,7 @@ class _MypageScreenState extends State<MypageScreen> {
                   AppPillButton(
                     label: '로그아웃',
                     textColor: textColor,
-                    borderColor: isDark ? AppColors.bg2 : AppColors.bg6,
+                    borderColor: AppColors.bg4,
                     onPressed: _handleSignOut,
                   ),
                   const SizedBox(height: 12),

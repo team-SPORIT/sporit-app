@@ -79,7 +79,7 @@ class _AppInputDialogState extends State<AppInputDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
     final hintColor = isDark ? AppColors.bg5 : AppColors.bg4;
-    final borderColor = isDark ? AppColors.bg9 : AppColors.bg0;
+    const borderColor = AppColors.bg4;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(50),
       borderSide: BorderSide(color: borderColor, width: 0.5),

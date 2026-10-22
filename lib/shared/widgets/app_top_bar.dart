@@ -72,7 +72,7 @@ class _AddButton extends StatelessWidget {
           height: 36,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: lineColor),
+            border: Border.all(color: AppColors.bg4),
           ),
           child: Icon(Icons.add, size: 20, color: lineColor),
         ),

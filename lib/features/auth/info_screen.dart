@@ -138,7 +138,7 @@ class InfoScreenState extends State<InfoScreen> {
     final hintColor = isDark ? AppColors.bg5 : AppColors.bg4;
     final trackColor = isDark ? AppColors.bg3 : AppColors.bg5;
     final filledColor = isDark ? AppColors.bg9 : AppColors.bg0;
-    final borderColor = isDark ? AppColors.bg9 : AppColors.bg0;
+    const borderColor = AppColors.bg4;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
