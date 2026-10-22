@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/services/workout_session.dart';
 import '../../shared/app_colors.dart';
 import '../../shared/widgets/app_top_bar.dart';
 import '../calendar/calendar_screen.dart';
 import '../record/record_screen.dart';
+
+// 떠 있는 하단 네비게이션의 크기와 화면 아래에서 띄우는 높이.
+// 그 아래에 깔리는 화면들이 가려지지 않게 자리를 비울 때 쓴다.
+const double homeNavBarHeight = 55;
+const double homeNavBarMargin = 24;
 
 // 하단 네비게이션의 세 화면. 선언 순서가 좌 -> 우 배치 순서이고,
 // 그대로 PageView의 페이지 순서가 된다(손으로 스와이프해도 같은 순서로 넘어감).
@@ -27,6 +34,18 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _pageController = PageController(initialPage: HomeTab.home.index);
   HomeTab _currentTab = HomeTab.home;
+
+  @override
+  void initState() {
+    super.initState();
+    // 운동 중에 앱을 껐다 켠 경우, 홈에 머무르지 않고 바로 타이머로 돌려보낸다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (WorkoutSessionController.instance.value != null) {
+        context.push('/record/timer');
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -54,22 +73,22 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _pageController,
             onPageChanged: (index) =>
                 setState(() => _currentTab = HomeTab.values[index]),
-            children: const [
-              RecordScreen(),
+            children: [
+              RecordScreen(isActive: _currentTab == HomeTab.record),
               // TODO: 홈 본문(연속 기록 카드, 함께 운동중 목록) 구현
-              Center(
+              const Center(
                 child: Text(
                   '홈',
                   style: TextStyle(fontSize: 16, color: AppColors.bg4),
                 ),
               ),
-              CalendarScreen(),
+              const CalendarScreen(),
             ],
           ),
           Positioned(
             left: 0,
             right: 0,
-            bottom: 24 + bottomSafeInset,
+            bottom: homeNavBarMargin + bottomSafeInset,
             child: Center(
               child: _HomeBottomNav(currentTab: _currentTab, onTap: _goToTab),
             ),

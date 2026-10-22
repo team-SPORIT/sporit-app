@@ -20,6 +20,12 @@ class MyApp extends StatelessWidget {
           theme: _themeData(appTheme, Brightness.light),
           darkTheme: _themeData(appTheme, Brightness.dark),
           routerConfig: router,
+          // 입력칸 바깥 아무 곳이나 누르면 키보드가 내려가도록 앱 전체에 깔아둔다.
+          builder: (context, child) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: child,
+          ),
         );
       },
     );

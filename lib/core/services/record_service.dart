@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 
 import '../constants/api.dart';
 import 'auth_service.dart';
@@ -37,5 +38,42 @@ class RecordService {
       counts[day] = (counts[day] ?? 0) + 1;
     }
     return counts;
+  }
+
+  // 운동 기록 작성. 서버가 사진을 Storage에 올리고 연속 기록까지 갱신한다.
+  Future<void> create({
+    required String photoPath,
+    required String exerciseType,
+    required Duration duration,
+    String? comment,
+  }) async {
+    final extension = photoPath.split('.').last.toLowerCase();
+    final subtype = extension == 'png'
+        ? 'png'
+        : (extension == 'webp' ? 'webp' : 'jpeg');
+
+    final request = http.MultipartRequest('POST', Uri.parse(Api.records))
+      ..headers.addAll(AuthService.instance.authHeaders())
+      ..fields['exerciseType'] = exerciseType
+      ..fields['durationMin'] = '${duration.inMinutes}'
+      ..files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          photoPath,
+          // 형식을 명시하지 않으면 octet-stream으로 올라가 서버 검증에 걸린다.
+          contentType: MediaType('image', subtype),
+        ),
+      );
+
+    final trimmedComment = comment?.trim();
+    if (trimmedComment != null && trimmedComment.isNotEmpty) {
+      request.fields['comment'] = trimmedComment;
+    }
+
+    final response = await http.Response.fromStream(await request.send());
+
+    if (response.statusCode >= 400) {
+      throw Exception('기록 저장에 실패했어요 (${response.statusCode})');
+    }
   }
 }

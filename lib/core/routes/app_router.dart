@@ -6,6 +6,9 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/info_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/mypage/mypage_screen.dart';
+import '../../features/record/record_form_screen.dart';
+import '../../features/record/workout_finish_screen.dart';
+import '../../features/record/workout_timer_screen.dart';
 
 CustomTransitionPage<void> _fadePage(GoRouterState state, Widget child) {
   return CustomTransitionPage(
@@ -43,6 +46,24 @@ final router = GoRouter(
     GoRoute(
       path: '/info',
       pageBuilder: (context, state) => _fadePage(state, const InfoScreen()),
+    ),
+    GoRoute(
+      path: '/record/timer',
+      pageBuilder: (context, state) => _fadePage(
+        state,
+        // extra에 사진 경로가 실려 오면 막 시작한 운동이라 카운트다운부터 보여준다.
+        WorkoutTimerScreen(startPhotoPath: state.extra as String?),
+      ),
+    ),
+    GoRoute(
+      path: '/record/finish',
+      pageBuilder: (context, state) =>
+          _fadePage(state, const WorkoutFinishScreen()),
+    ),
+    GoRoute(
+      path: '/record/form',
+      pageBuilder: (context, state) =>
+          _fadePage(state, const RecordFormScreen()),
     ),
     GoRoute(
       path: '/mypage',

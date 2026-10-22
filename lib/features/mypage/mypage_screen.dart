@@ -14,6 +14,7 @@ import '../../shared/app_theme.dart';
 import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/app_input_dialog.dart';
 import '../../shared/widgets/app_pill_button.dart';
+import '../../shared/widgets/exercise_add_button.dart';
 import '../../shared/widgets/exercise_chip.dart';
 
 class MypageScreen extends StatefulWidget {
@@ -364,11 +365,7 @@ class _MypageScreenState extends State<MypageScreen> {
                   isDeleting: _deletingIds.contains(exercise.id),
                   onDelete: () => _handleDeleteExercise(exercise),
                 ),
-              _AddExerciseButton(
-                borderColor: borderColor,
-                iconColor: textColor,
-                onTap: _handleAddExercise,
-              ),
+              ExerciseAddButton(onTap: _handleAddExercise),
             ],
           ),
         ],
@@ -563,36 +560,6 @@ class _ThemeCircle extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-      ),
-    );
-  }
-}
-
-class _AddExerciseButton extends StatelessWidget {
-  const _AddExerciseButton({
-    required this.borderColor,
-    required this.iconColor,
-    required this.onTap,
-  });
-
-  final Color borderColor;
-  final Color iconColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(50),
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: borderColor, width: 0.5),
-        ),
-        child: Icon(Icons.add, size: 18, color: iconColor),
       ),
     );
   }
