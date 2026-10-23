@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/models/group.dart';
+import '../../core/services/group_service.dart';
 import '../../core/services/workout_session.dart';
 import '../../shared/app_colors.dart';
+import '../../shared/widgets/app_input_dialog.dart';
 import '../../shared/widgets/app_top_bar.dart';
+import 'widgets/create_group_dialog.dart';
+import 'widgets/group_card.dart';
 import '../calendar/calendar_screen.dart';
 import '../record/record_screen.dart';
 
@@ -35,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pageController = PageController(initialPage: HomeTab.home.index);
   HomeTab _currentTab = HomeTab.home;
 
+  List<Group> _groups = [];
+  bool _isLoadingGroups = true;
+
   @override
   void initState() {
     super.initState();
@@ -45,12 +53,67 @@ class _HomeScreenState extends State<HomeScreen> {
         context.push('/record/timer');
       }
     });
+    _loadGroups();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  Future<void> _loadGroups() async {
+    try {
+      final groups = await GroupService.instance.fetchMine();
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
+        _isLoadingGroups = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingGroups = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _handleAddAction(TopBarAddAction action) async {
+    switch (action) {
+      case TopBarAddAction.joinGroup:
+        await _handleJoinGroup();
+      case TopBarAddAction.createGroup:
+        await _handleCreateGroup();
+    }
+  }
+
+  Future<void> _handleJoinGroup() async {
+    final code = await AppInputDialog.show(
+      context,
+      title: '그룹코드를 입력해주세요',
+      hintText: '그룹코드 을 입력',
+      confirmText: '완료',
+      // 서버가 8자리 초대 코드만 받는다.
+      maxLength: 8,
+    );
+    if (code == null) return;
+
+    try {
+      await GroupService.instance.join(code);
+      await _loadGroups();
+    } catch (e) {
+      _showMessage('$e');
+    }
+  }
+
+  Future<void> _handleCreateGroup() async {
+    final created = await CreateGroupDialog.show(context);
+    if (created == null) return;
+
+    try {
+      await GroupService.instance.create(created.name, created.maxMembers);
+      await _loadGroups();
+    } catch (e) {
+      _showMessage('$e');
+    }
   }
 
   void _goToTab(HomeTab tab) {
@@ -66,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Scaffold(
-      appBar: const AppTopBar(),
+      appBar: AppTopBar(onAddPressed: _handleAddAction),
       body: Stack(
         children: [
           PageView(
@@ -75,12 +138,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() => _currentTab = HomeTab.values[index]),
             children: [
               RecordScreen(isActive: _currentTab == HomeTab.record),
-              // TODO: 홈 본문(연속 기록 카드, 함께 운동중 목록) 구현
-              const Center(
-                child: Text(
-                  '홈',
-                  style: TextStyle(fontSize: 16, color: AppColors.bg4),
-                ),
+              _HomeBody(
+                groups: _groups,
+                isLoading: _isLoadingGroups,
+                bottomInset:
+                    homeNavBarMargin + bottomSafeInset + homeNavBarHeight + 16,
               ),
               const CalendarScreen(),
             ],
@@ -93,6 +155,56 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _HomeBottomNav(currentTab: _currentTab, onTap: _goToTab),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeBody extends StatelessWidget {
+  const _HomeBody({
+    required this.groups,
+    required this.isLoading,
+    required this.bottomInset,
+  });
+
+  final List<Group> groups;
+  final bool isLoading;
+  final double bottomInset;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // TODO: 연속 기록 카드 구현
+          if (groups.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Center(
+                child: Text(
+                  '아직 참여한 그룹이 없어요',
+                  style: TextStyle(fontSize: 14, color: AppColors.bg4),
+                ),
+              ),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: groups.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                mainAxisExtent: 184,
+              ),
+              itemBuilder: (context, index) => GroupCard(group: groups[index]),
+            ),
         ],
       ),
     );

@@ -132,9 +132,10 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
         duration: session.elapsed,
         comment: _commentController.text,
       );
-      if (!mounted) return;
+      // 서버에 올라갔으면 화면이 남아 있든 아니든 운동은 끝난 것으로 정리한다.
+      // 여기서 지우지 않으면 홈에 돌아갔을 때 타이머가 다시 열린다.
       WorkoutSessionController.instance.finish();
-      context.go('/home');
+      if (mounted) context.go('/home');
     } catch (e) {
       _showMessage('$e');
       if (mounted) setState(() => _isSubmitting = false);

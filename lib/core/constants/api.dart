@@ -8,6 +8,9 @@ class Api {
   static String get authSync => '$baseUrl/auth/sync';
   static String get profilesMe => '$baseUrl/profiles/me';
   static String get profilesAvatar => '$baseUrl/profiles/me/avatar';
+  static String get groups => '$baseUrl/groups';
+  static String get groupsJoin => '$baseUrl/groups/join';
+  static String groupById(String id) => '$baseUrl/groups/$id';
   static String get records => '$baseUrl/records';
   static String get recordsMe => '$baseUrl/records/me';
   static String get exercises => '$baseUrl/exercises';
