@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/group.dart';
+import '../../core/models/profile.dart';
 import '../../core/services/group_service.dart';
+import '../../core/services/profile_controller.dart';
 import '../../core/services/workout_session.dart';
 import '../../shared/app_colors.dart';
 import '../../shared/widgets/app_input_dialog.dart';
 import '../../shared/widgets/app_top_bar.dart';
 import 'widgets/create_group_dialog.dart';
 import 'widgets/group_card.dart';
+import 'widgets/streak_card.dart';
 import '../calendar/calendar_screen.dart';
 import '../record/record_screen.dart';
 
@@ -181,7 +184,12 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TODO: 연속 기록 카드 구현
+          // 프로필이 바뀌면(기록을 올려 연속 일수가 늘면) 카드가 따라 바뀐다.
+          ValueListenableBuilder<Profile?>(
+            valueListenable: ProfileController.instance,
+            builder: (context, profile, _) => StreakCard(profile: profile),
+          ),
+          const SizedBox(height: 24),
           if (groups.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 40),
