@@ -42,6 +42,8 @@ dependencies:
   shared_preferences: ^2.5.5
   image_picker: ^1.2.3
   http_parser: ^4.1.2
+  camera: ^0.12.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +83,11 @@ flutter:
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
+
+  fonts:
+    - family: Infinite
+      fonts:
+        - asset: assets/fonts/Infinite.ttf
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a

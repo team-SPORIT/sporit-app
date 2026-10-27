@@ -1,31 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '/core/routes/app_router.dart';
-import '/core/services/theme_controller.dart';
 import '/shared/app_colors.dart';
-import '/shared/app_theme.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 설정에서 테마를 바꾸면 앱 전체 강조색이 곧바로 따라간다.
-    return ValueListenableBuilder<AppTheme>(
-      valueListenable: ThemeController.instance,
-      builder: (context, appTheme, _) {
-        return MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          themeMode: ThemeMode.system,
-          theme: _themeData(appTheme, Brightness.light),
-          darkTheme: _themeData(appTheme, Brightness.dark),
-          routerConfig: router,
-        );
-      },
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
+      theme: _themeData(Brightness.light),
+      darkTheme: _themeData(Brightness.dark),
+      routerConfig: router,
+      // 입력칸 바깥 아무 곳이나 누르면 키보드가 내려가도록 앱 전체에 깔아둔다.
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: child,
+      ),
     );
   }
 
-  ThemeData _themeData(AppTheme appTheme, Brightness brightness) {
+  ThemeData _themeData(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
 
     return ThemeData(
@@ -33,11 +31,12 @@ class MyApp extends StatelessWidget {
       scaffoldBackgroundColor: isDark ? AppColors.bg0 : AppColors.bg9,
       colorScheme:
           ColorScheme.fromSeed(
-            seedColor: appTheme.color,
+            seedColor: AppColors.bg0,
             brightness: brightness,
           ).copyWith(
-            // 브랜드 색을 그대로 써야 해서 fromSeed가 보정한 값을 덮어쓴다.
-            primary: appTheme.color,
+            // 강조색은 밝은 화면에서는 검정, 어두운 화면에서는 흰색이다.
+            primary: isDark ? AppColors.bg9 : AppColors.bg0,
+            onPrimary: isDark ? AppColors.bg0 : AppColors.bg9,
           ),
     );
   }

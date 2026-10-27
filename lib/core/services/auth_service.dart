@@ -8,11 +8,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart'
     show LaunchMode, closeInAppWebView;
 
-import '../../shared/app_theme.dart';
 import '../constants/api.dart';
+import '../models/profile.dart';
 import '../routes/app_router.dart';
+import 'profile_controller.dart';
 import 'splash_gate.dart';
-import 'theme_controller.dart';
 
 class AuthService {
   AuthService._();
@@ -125,8 +125,9 @@ class AuthService {
 
     final body =
         jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    // sync 응답이 프로필 행 전체라서, 저장해둔 테마를 여기서 바로 적용할 수 있다.
-    ThemeController.instance.value = AppTheme.fromApiValue(body['theme']);
+    // sync 응답이 프로필 행 전체라서 프로필을 여기서 바로 채운다
+    // (상단바 프로필 사진이 홈에 들어가자마자 보이도록).
+    ProfileController.instance.value = Profile.fromJson(body);
     return body['isNew'] as bool? ?? false;
   }
 
@@ -142,5 +143,10 @@ class AuthService {
     };
   }
 
-  Future<void> signOut() => _client.auth.signOut();
+  Future<void> signOut() async {
+    // 다음 사용자가 로그인해 동기화가 끝나기 전까지 이전 사용자의 프로필이
+    // 상단바에 남아 보이지 않도록 지운다.
+    ProfileController.instance.value = null;
+    await _client.auth.signOut();
+  }
 }

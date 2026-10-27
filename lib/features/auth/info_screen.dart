@@ -138,112 +138,107 @@ class InfoScreenState extends State<InfoScreen> {
     final hintColor = isDark ? AppColors.bg5 : AppColors.bg4;
     final trackColor = isDark ? AppColors.bg3 : AppColors.bg5;
     final filledColor = isDark ? AppColors.bg9 : AppColors.bg0;
-    final borderColor = isDark ? AppColors.bg9 : AppColors.bg0;
+    const borderColor = AppColors.bg4;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: _progress),
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    builder: (context, value, _) => LinearProgressIndicator(
-                      value: value,
-                      minHeight: 4,
-                      backgroundColor: trackColor,
-                      valueColor: AlwaysStoppedAnimation<Color>(filledColor),
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: _progress),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    value: value,
+                    minHeight: 4,
+                    backgroundColor: trackColor,
+                    valueColor: AlwaysStoppedAnimation<Color>(filledColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (page) => setState(() => _currentPage = page),
+                  children: [
+                    _TextStepContent(
+                      title: '이름을 알려주세요',
+                      hintText: '이름을 입력 해주세요',
+                      controller: _nameController,
+                      textColor: textColor,
+                      hintColor: hintColor,
+                      borderColor: borderColor,
+                    ),
+                    _SportStepContent(
+                      controller: _sportController,
+                      focusNode: _sportFocusNode,
+                      tags: _sportTags,
+                      textColor: textColor,
+                      hintColor: hintColor,
+                      borderColor: borderColor,
+                      onAddTag: _addSportTag,
+                      onDeleteTag: _removeSportTag,
+                    ),
+                  ],
+                ),
+              ),
+              if (!_isLastPage)
+                Center(
+                  child: GestureDetector(
+                    onTap: _goToNextPage,
+                    child: const Text(
+                      '건너뛰기',
+                      style: TextStyle(fontSize: 14, color: AppColors.bg5),
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (page) =>
-                        setState(() => _currentPage = page),
-                    children: [
-                      _TextStepContent(
-                        title: '이름을 알려주세요',
-                        hintText: '이름을 입력 해주세요',
-                        controller: _nameController,
-                        textColor: textColor,
-                        hintColor: hintColor,
-                        borderColor: borderColor,
-                      ),
-                      _SportStepContent(
-                        controller: _sportController,
-                        focusNode: _sportFocusNode,
-                        tags: _sportTags,
-                        textColor: textColor,
-                        hintColor: hintColor,
-                        borderColor: borderColor,
-                        onAddTag: _addSportTag,
-                        onDeleteTag: _removeSportTag,
-                      ),
-                    ],
-                  ),
-                ),
-                if (!_isLastPage)
-                  Center(
-                    child: GestureDetector(
-                      onTap: _goToNextPage,
-                      child: const Text(
-                        '건너뛰기',
-                        style: TextStyle(fontSize: 14, color: AppColors.bg5),
-                      ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isSaving
+                      ? null
+                      : (_isLastPage ? _handleComplete : _goToNextPage),
+                  style: ElevatedButton.styleFrom(
+                    // 저장 중에도 색이 흐려지지 않게 두 값을 같게 둔다.
+                    backgroundColor: themeColor,
+                    disabledBackgroundColor: themeColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
                     ),
                   ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : (_isLastPage ? _handleComplete : _goToNextPage),
-                    style: ElevatedButton.styleFrom(
-                      // 저장 중에도 색이 흐려지지 않게 두 값을 같게 둔다.
-                      backgroundColor: themeColor,
-                      disabledBackgroundColor: themeColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.bg9,
-                              ),
-                            ),
-                          )
-                        : Text(
-                            _isLastPage ? '완료하기' : '다음으로',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.bg9,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.bg9,
                             ),
                           ),
-                  ),
+                        )
+                      : Text(
+                          _isLastPage ? '완료하기' : '다음으로',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.bg9,
+                          ),
+                        ),
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),

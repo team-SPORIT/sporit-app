@@ -44,7 +44,9 @@ class AppDialog extends StatelessWidget {
               const SizedBox(height: 82)
             else ...[
               const SizedBox(height: 20),
-              content!,
+              // 키보드가 올라오면 다이얼로그 높이가 그만큼 줄어든다. 내용이
+              // 접힐 수 있게 해둬야 넘치지 않고, 대신 그 안에서 스크롤된다.
+              Flexible(child: SingleChildScrollView(child: content!)),
               const SizedBox(height: 16),
             ],
             Row(
