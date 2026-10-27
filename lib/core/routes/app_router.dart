@@ -4,9 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/info_screen.dart';
-import '../../features/home/home_screen.dart';
+import '../../features/home/home_screen.dart' show HomeScreen, HomeTab;
 import '../../features/mypage/mypage_screen.dart';
+import '../../core/models/group_feed.dart';
+import '../../features/exercise/exercise_detail_screen.dart';
+import '../../features/group/group_detail_screen.dart';
+import '../../features/group/share_detail_screen.dart';
 import '../../features/record/record_form_screen.dart';
+import '../../features/record/workout_start_screen.dart';
 import '../../features/record/workout_finish_screen.dart';
 import '../../features/record/workout_timer_screen.dart';
 
@@ -41,11 +46,42 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/home',
-      pageBuilder: (context, state) => _fadePage(state, const HomeScreen()),
+      pageBuilder: (context, state) =>
+          _fadePage(state, HomeScreen(initialTab: state.extra as HomeTab?)),
     ),
     GoRoute(
       path: '/info',
       pageBuilder: (context, state) => _fadePage(state, const InfoScreen()),
+    ),
+    GoRoute(
+      path: '/exercise',
+      pageBuilder: (context, state) {
+        final args = state.extra as ({String exerciseType, Color color});
+        return _fadePage(
+          state,
+          ExerciseDetailScreen(
+            exerciseType: args.exerciseType,
+            color: args.color,
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/group/:id',
+      pageBuilder: (context, state) => _fadePage(
+        state,
+        GroupDetailScreen(groupId: state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/group/:id/share',
+      pageBuilder: (context, state) =>
+          _fadePage(state, ShareDetailScreen(share: state.extra as FeedShare)),
+    ),
+    GoRoute(
+      path: '/record/start',
+      pageBuilder: (context, state) =>
+          _fadePage(state, const WorkoutStartScreen()),
     ),
     GoRoute(
       path: '/record/timer',

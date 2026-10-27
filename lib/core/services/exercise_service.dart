@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../constants/api.dart';
-import '../models/user_exercise.dart';
+import '../models/exercise.dart';
+import '../models/group.dart';
+import '../models/selectable_exercise.dart';
 import 'auth_service.dart';
 
 class ExerciseService {
@@ -11,10 +13,42 @@ class ExerciseService {
 
   static final ExerciseService instance = ExerciseService._();
 
-  // 내 선호 운동 목록 조회 (등록 순)
-  Future<List<UserExercise>> fetchMine() async {
+  // 기록 작성 화면에서 고를 수 있는 종목 (내 종목 + 그룹 전용 종목)
+  Future<List<SelectableExercise>> fetchSelectable() async {
     final response = await http.get(
-      Uri.parse(Api.exercisesMe),
+      Uri.parse(Api.exercisesSelectable),
+      headers: AuthService.instance.authHeaders(),
+    );
+
+    if (response.statusCode >= 400) {
+      throw Exception('종목을 불러오지 못했어요 (${response.statusCode})');
+    }
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes));
+    return SelectableExercise.listFromJson(body as Map<String, dynamic>);
+  }
+
+  // 이 종목으로 기록을 올릴 수 있는 내 그룹 목록
+  Future<List<Group>> fetchGroupsFor(String exerciseId) async {
+    final response = await http.get(
+      Uri.parse(Api.exerciseGroups(exerciseId)),
+      headers: AuthService.instance.authHeaders(),
+    );
+
+    if (response.statusCode >= 400) {
+      throw Exception('그룹을 불러오지 못했어요 (${response.statusCode})');
+    }
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
+    return body
+        .map((item) => Group.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  // 내 개인 종목 목록
+  Future<List<Exercise>> fetchMine() async {
+    final response = await http.get(
+      Uri.parse(Api.exercises),
       headers: AuthService.instance.authHeaders(),
     );
 
@@ -25,12 +59,12 @@ class ExerciseService {
     // 한글이 깨지지 않도록 charset 헤더에 의존하지 않고 직접 utf8로 디코딩한다.
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
     return body
-        .map((item) => UserExercise.fromJson(item as Map<String, dynamic>))
+        .map((item) => Exercise.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
   // 선호 운동 추가
-  Future<UserExercise> add(String name) async {
+  Future<Exercise> add(String name) async {
     final response = await http.post(
       Uri.parse(Api.exercises),
       headers: AuthService.instance.authHeaders(json: true),
@@ -46,7 +80,7 @@ class ExerciseService {
     }
 
     final body = jsonDecode(utf8.decode(response.bodyBytes));
-    return UserExercise.fromJson(body as Map<String, dynamic>);
+    return Exercise.fromJson(body as Map<String, dynamic>);
   }
 
   // 선호 운동 삭제

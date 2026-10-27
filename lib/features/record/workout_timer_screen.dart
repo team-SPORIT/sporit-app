@@ -4,10 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/workout_session.dart';
+import '../../core/utils/duration_format.dart';
 import '../../shared/app_colors.dart';
-import '../../shared/widgets/app_pill_button.dart';
 
 const _cheerText = '열정이 열심히 불타고 있어요!!';
+
+// 카운트다운은 숫자가 올라갈수록 불이 세지듯 색이 바뀐다.
+const _countdownColors = [
+  AppColors.fire_yellow,
+  AppColors.fire_orange,
+  AppColors.fire_red,
+];
 
 // 운동 중 화면. 시작 직후에는 3까지 세고, 그 뒤로는 경과 시간을 보여준다.
 // 화면을 나갔다 들어와도, 앱을 껐다 켜도 진행 중인 운동이 그대로 이어진다.
@@ -59,10 +66,10 @@ class _WorkoutTimerScreenState extends State<WorkoutTimerScreen> {
     });
   }
 
-  // 다 세고 난 지금을 운동 시작 시각으로 삼는다. 시작 사진을 보관 폴더로
-  // 옮기는 동안 기다려야 한다. 기다리지 않고 화면을 바꾸면 아직 운동이 없는
-  // 상태로 그려져서 홈으로 되돌려보내진다.
+  // 다 세고 난 지금을 운동 시작 시각으로 삼는다.
   Future<void> _finishCountdown() async {
+    // 시작 사진을 보관 폴더로 옮기는 동안 기다린다. 기다리지 않고 화면을 바꾸면
+    // 아직 운동이 없는 상태로 그려져서 홈으로 되돌려보내진다.
     await WorkoutSessionController.instance.start(widget.startPhotoPath!);
     if (!mounted) return;
     setState(() => _isCountingDown = false);
@@ -102,20 +109,32 @@ class _WorkoutTimerScreenState extends State<WorkoutTimerScreen> {
       return Scaffold(backgroundColor: themeColor);
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = _isCountingDown
+        ? _countdownColors[(_countdownStep - 1).clamp(
+            0,
+            _countdownColors.length - 1,
+          )]
+        : (isDark ? AppColors.bg0 : AppColors.bg8);
+
     return PopScope(
       // 운동 중에 뒤로 가기로 빠져나가면 진행 상황을 놓치게 되므로 막는다.
       canPop: false,
       child: Scaffold(
-        backgroundColor: themeColor,
+        backgroundColor: backgroundColor,
         body: SafeArea(
-          child: _isCountingDown
-              ? _CountdownBody(step: _countdownStep)
-              : _RunningBody(
-                  session: session!,
-                  onPause: _handlePause,
-                  onResume: _handleResume,
-                  onFinish: _handleFinish,
-                ),
+          // Scaffold는 body에 "최대 이만큼"만 알려주기 때문에, 펴주지 않으면
+          // Column이 가장 넓은 자식 크기로 줄어들어 내용이 왼쪽에 몰린다.
+          child: SizedBox.expand(
+            child: _isCountingDown
+                ? _CountdownBody(step: _countdownStep)
+                : _RunningBody(
+                    session: session!,
+                    onPause: _handlePause,
+                    onResume: _handleResume,
+                    onFinish: _handleFinish,
+                  ),
+          ),
         ),
       ),
     );
@@ -138,8 +157,8 @@ class _CountdownBody extends StatelessWidget {
             '$step',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 120,
-              fontWeight: FontWeight.w800,
+              fontFamily: 'Infinite',
+              fontSize: 150,
               color: AppColors.bg9,
             ),
           ),
@@ -170,71 +189,154 @@ class _RunningBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
     final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Column(
       children: [
-        const Spacer(),
-        Image.asset('assets/img/icon/icon_wh.png', width: 40),
-        const SizedBox(height: 16),
+        const Spacer(flex: 3),
+        Image.asset(
+          // 흰색 아이콘에 색을 입혀서 불꽃을 주황으로 만든다.
+          'assets/img/icon/icon_wh.png',
+          width: 72,
+          color: AppColors.fire_orange,
+        ),
+        const SizedBox(height: 20),
         Text(
-          formatWorkoutDuration(session.elapsed),
-          style: const TextStyle(
-            fontSize: 44,
-            fontWeight: FontWeight.w800,
-            color: AppColors.bg9,
+          formatSeconds(session.elapsed.inSeconds),
+          style: TextStyle(
+            fontFamily: 'Infinite',
+            fontSize: 52,
+            color: textColor,
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          _cheerText,
-          style: TextStyle(fontSize: 13, color: AppColors.bg9),
-        ),
-        const Spacer(),
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, 24 + bottomSafeInset),
-          child: session.isPaused
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: AppPillButton(
-                        label: '이어하기',
-                        textColor: AppColors.bg9,
-                        fillColor: AppColors.bg0,
-                        onPressed: onResume,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppPillButton(
-                        label: '운동끝내기',
-                        textColor: AppColors.bg9,
-                        fillColor: AppColors.redWaring,
-                        onPressed: onFinish,
-                      ),
-                    ),
-                  ],
-                )
-              : AppPillButton(
-                  label: '일시 정지하기',
-                  textColor: AppColors.bg9,
-                  fillColor: AppColors.bg0,
-                  onPressed: onPause,
+        const Spacer(flex: 4),
+        if (session.isPaused)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _CircleButton(
+                onTap: onResume,
+                borderColor: AppColors.bg2,
+                child: const _PlayIcon(color: AppColors.bg2),
+              ),
+              const SizedBox(width: 28),
+              _CircleButton(
+                onTap: onFinish,
+                borderColor: AppColors.stop_red,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.stop_red,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-        ),
+              ),
+            ],
+          )
+        else
+          _CircleButton(
+            onTap: onPause,
+            borderColor: AppColors.bg2,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < 2; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Container(
+                    width: 11,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.bg2,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        SizedBox(height: 80 + bottomSafeInset),
       ],
     );
   }
 }
 
-// 1:27:40 처럼 시:분:초로, 한 시간이 안 되면 분:초로 보여준다.
-String formatWorkoutDuration(Duration duration) {
-  final seconds = duration.inSeconds.clamp(0, 1 << 31);
-  final hours = seconds ~/ 3600;
-  final minutes = (seconds % 3600) ~/ 60;
-  final remainingSeconds = seconds % 60;
-  final paddedSeconds = remainingSeconds.toString().padLeft(2, '0');
+// 테두리만 있는 둥근 버튼. 안에 재생/일시정지/정지 모양이 들어간다.
+class _CircleButton extends StatelessWidget {
+  const _CircleButton({
+    required this.onTap,
+    required this.borderColor,
+    required this.child,
+  });
 
-  if (hours == 0) return '$minutes:$paddedSeconds';
-  return '$hours:${minutes.toString().padLeft(2, '0')}:$paddedSeconds';
+  final VoidCallback onTap;
+  final Color borderColor;
+  final Widget child;
+
+  static const double _size = 120;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: _size,
+        height: _size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: borderColor, width: 3),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+// 재생 삼각형. 아이콘 폰트 대신 직접 그려서 크기와 비율을 맞춘다.
+class _PlayIcon extends StatelessWidget {
+  const _PlayIcon({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(34, 38),
+      painter: _PlayIconPainter(color: color),
+    );
+  }
+}
+
+class _PlayIconPainter extends CustomPainter {
+  const _PlayIconPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      // 모서리를 살짝 둥글게 해서 시안의 삼각형과 같은 느낌을 낸다.
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas
+      ..drawPath(path, paint)
+      ..drawPath(path, paint..style = PaintingStyle.stroke);
+  }
+
+  @override
+  bool shouldRepaint(_PlayIconPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

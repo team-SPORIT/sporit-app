@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/splash_gate.dart';
-import 'core/services/theme_controller.dart';
 import 'core/services/workout_session.dart';
 
 Future<void> main() async {
@@ -16,9 +15,6 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-
-  // 스플래시부터 저장해둔 테마로 그릴 수 있게, 로그인 동기화보다 먼저 읽어둔다.
-  await ThemeController.instance.load();
 
   // 운동 중에 앱을 껐다 켜도 이어서 보여줄 수 있도록 되살린다.
   await WorkoutSessionController.instance.load();

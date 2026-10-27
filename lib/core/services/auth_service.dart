@@ -13,7 +13,6 @@ import '../models/profile.dart';
 import '../routes/app_router.dart';
 import 'profile_controller.dart';
 import 'splash_gate.dart';
-import 'theme_controller.dart';
 
 class AuthService {
   AuthService._();
@@ -126,11 +125,9 @@ class AuthService {
 
     final body =
         jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    // sync 응답이 프로필 행 전체라서, 저장해둔 테마와 프로필을 여기서 바로
-    // 적용할 수 있다(상단바 프로필 사진이 홈에 들어가자마자 보이도록).
-    final profile = Profile.fromJson(body);
-    ProfileController.instance.value = profile;
-    ThemeController.instance.value = profile.theme;
+    // sync 응답이 프로필 행 전체라서 프로필을 여기서 바로 채운다
+    // (상단바 프로필 사진이 홈에 들어가자마자 보이도록).
+    ProfileController.instance.value = Profile.fromJson(body);
     return body['isNew'] as bool? ?? false;
   }
 

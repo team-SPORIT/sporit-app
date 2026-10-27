@@ -3,9 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/models/profile.dart';
 import '../../core/services/profile_controller.dart';
-import '../../core/services/theme_controller.dart';
 import '../app_colors.dart';
-import '../app_theme.dart';
 
 // 상단바의 + 버튼을 눌렀을 때 고를 수 있는 동작.
 enum TopBarAddAction { joinGroup, createGroup }
@@ -35,12 +33,11 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              ValueListenableBuilder<AppTheme>(
-                valueListenable: ThemeController.instance,
-                builder: (context, appTheme, _) => Image.asset(
-                  appTheme.logotypeAsset(isDark: isDark),
-                  width: 116,
-                ),
+              Image.asset(
+                isDark
+                    ? 'assets/img/logotype/logotype_wh.png'
+                    : 'assets/img/logotype/logotype_bk.png',
+                width: 116,
               ),
               const Spacer(),
               _AddButton(onSelected: onAddPressed, isDark: isDark),

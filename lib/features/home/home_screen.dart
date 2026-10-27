@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/group.dart';
-import '../../core/models/profile.dart';
+import '../../core/models/weekly_stats.dart';
+import '../../core/models/category.dart';
+import '../../core/services/category_service.dart';
 import '../../core/services/group_service.dart';
-import '../../core/services/profile_controller.dart';
+import '../../core/services/stats_service.dart';
 import '../../core/services/workout_session.dart';
 import '../../shared/app_colors.dart';
 import '../../shared/widgets/app_input_dialog.dart';
 import '../../shared/widgets/app_top_bar.dart';
 import 'widgets/create_group_dialog.dart';
 import 'widgets/group_card.dart';
-import 'widgets/streak_card.dart';
+import 'widgets/weekly_summary.dart';
 import '../calendar/calendar_screen.dart';
 import '../record/record_screen.dart';
 
@@ -33,18 +35,29 @@ enum HomeTab {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.initialTab});
+
+  // 특정 탭을 보여달라는 요청. 홈 화면은 한 번 만들어지면 살아 있어서,
+  // 기록을 게시하고 돌아올 때처럼 보던 탭을 바꿔줘야 하는 경우에 쓴다.
+  final HomeTab? initialTab;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _pageController = PageController(initialPage: HomeTab.home.index);
-  HomeTab _currentTab = HomeTab.home;
+  late final _pageController = PageController(
+    initialPage: (widget.initialTab ?? HomeTab.home).index,
+  );
+  late HomeTab _currentTab = widget.initialTab ?? HomeTab.home;
 
   List<Group> _groups = [];
-  bool _isLoadingGroups = true;
+  WeeklyStats? _weeklyStats;
+  List<ExerciseCategory> _categories = [];
+
+  // 그룹 id -> 그 그룹에 올릴 수 있는 종목 이름들. 비어 있으면 전체 허용.
+  final Map<String, List<String>> _groupExercises = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -56,20 +69,72 @@ class _HomeScreenState extends State<HomeScreen> {
         context.push('/record/timer');
       }
     });
-    _loadGroups();
+    _load();
   }
 
-  Future<void> _loadGroups() async {
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final requested = widget.initialTab;
+    if (requested == null) return;
+
+    // 기록을 게시하고 돌아온 경우다. 보던 탭이 달랐다면 홈 탭으로 옮기고,
+    // 그 사이에 늘어난 기록이 바로 보이도록 다시 받아온다.
+    if (requested != _currentTab) _goToTab(requested);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
     try {
-      final groups = await GroupService.instance.fetchMine();
+      final results = await Future.wait([
+        GroupService.instance.fetchMine(),
+        StatsService.instance.fetchWeekly(),
+        CategoryService.instance.fetchMine(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _groups = groups;
-        _isLoadingGroups = false;
+        _groups = results[0] as List<Group>;
+        _weeklyStats = results[1] as WeeklyStats;
+        _categories = results[2] as List<ExerciseCategory>;
+        _isLoading = false;
       });
+      await _loadGroupExercises();
     } catch (_) {
-      if (mounted) setState(() => _isLoadingGroups = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // 그룹 목록 API는 허용 종목을 주지 않아서 그룹마다 따로 받아온다.
+  // 카드가 먼저 그려진 뒤 종목만 채워지므로 목록이 늦게 뜨지는 않는다.
+  Future<void> _loadGroupExercises() async {
+    final results = await Future.wait(
+      _groups.map((group) async {
+        try {
+          final exercises = await GroupService.instance.fetchExercises(
+            group.id,
+          );
+          return (
+            id: group.id,
+            names: exercises.allowAll ? <String>[] : exercises.names,
+          );
+        } catch (_) {
+          return (id: group.id, names: <String>[]);
+        }
+      }),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      for (final result in results) {
+        _groupExercises[result.id] = result.names;
+      }
+    });
   }
 
   void _showMessage(String message) {
@@ -101,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       await GroupService.instance.join(code);
-      await _loadGroups();
+      await _load();
     } catch (e) {
       _showMessage('$e');
     }
@@ -112,8 +177,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (created == null) return;
 
     try {
-      await GroupService.instance.create(created.name, created.maxMembers);
-      await _loadGroups();
+      // 이름, 인원, 색, 허용 종목을 한 번에 보낸다.
+      await GroupService.instance.create(
+        name: created.name,
+        maxMembers: created.maxMembers,
+        colorKey: created.colorKey,
+        exerciseNames: created.exerciseNames,
+      );
+      await _load();
     } catch (e) {
       _showMessage('$e');
     }
@@ -142,12 +213,16 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               RecordScreen(isActive: _currentTab == HomeTab.record),
               _HomeBody(
+                onRefresh: _load,
                 groups: _groups,
-                isLoading: _isLoadingGroups,
+                weeklyStats: _weeklyStats,
+                categories: _categories,
+                groupExercises: _groupExercises,
+                isLoading: _isLoading,
                 bottomInset:
                     homeNavBarMargin + bottomSafeInset + homeNavBarHeight + 16,
               ),
-              const CalendarScreen(),
+              CalendarScreen(isActive: _currentTab == HomeTab.calendar),
             ],
           ),
           Positioned(
@@ -166,54 +241,147 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _HomeBody extends StatelessWidget {
   const _HomeBody({
+    required this.onRefresh,
     required this.groups,
+    required this.weeklyStats,
+    required this.categories,
+    required this.groupExercises,
     required this.isLoading,
     required this.bottomInset,
   });
 
+  final Future<void> Function() onRefresh;
   final List<Group> groups;
+  final WeeklyStats? weeklyStats;
+  final List<ExerciseCategory> categories;
+  final Map<String, List<String>> groupExercises;
   final bool isLoading;
   final double bottomInset;
+
+  // 주간 집계는 종목 이름만 준다. 선호 운동(카테고리)의 이름이나 거기에 묶인
+  // 종목 이름과 맞춰서 색을 가져온다.
+  Color _colorOf(String exerciseType) {
+    for (final category in categories) {
+      if (category.name == exerciseType ||
+          category.exerciseNames.contains(exerciseType)) {
+        return category.color;
+      }
+    }
+    return AppColors.ex_black;
+  }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) return const Center(child: CircularProgressIndicator());
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 프로필이 바뀌면(기록을 올려 연속 일수가 늘면) 카드가 따라 바뀐다.
-          ValueListenableBuilder<Profile?>(
-            valueListenable: ProfileController.instance,
-            builder: (context, profile, _) => StreakCard(profile: profile),
-          ),
-          const SizedBox(height: 24),
-          if (groups.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 40),
-              child: Center(
-                child: Text(
-                  '아직 참여한 그룹이 없어요',
-                  style: TextStyle(fontSize: 14, color: AppColors.bg4),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.bg9 : AppColors.bg1;
+    final byExercise = weeklyStats?.byExercise ?? const [];
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: SingleChildScrollView(
+        // 내용이 짧아도 아래로 당길 수 있어야 새로고침이 된다.
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            // 바깥 Column이 왼쪽 정렬이라 폭을 채워줘야 가운데로 온다.
+            SizedBox(
+              width: double.infinity,
+              child: WeeklySummary(stats: weeklyStats),
+            ),
+            const SizedBox(height: 28),
+            _SectionTitle(title: '이번 주 기록', textColor: textColor),
+            const SizedBox(height: 12),
+            if (byExercise.isEmpty)
+              _EmptyText(text: '이번 주 기록이 아직 없어요')
+            else
+              SizedBox(
+                height: 150,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: byExercise.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final stats = byExercise[index];
+                    final color = _colorOf(stats.exerciseType);
+                    return WeeklyExerciseCard(
+                      stats: stats,
+                      color: color,
+                      onTap: () => context.push(
+                        '/exercise',
+                        extra: (exerciseType: stats.exerciseType, color: color),
+                      ),
+                    );
+                  },
                 ),
               ),
-            )
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: groups.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                mainAxisExtent: 184,
+            const SizedBox(height: 28),
+            _SectionTitle(title: '그룹', textColor: textColor),
+            const SizedBox(height: 12),
+            if (groups.isEmpty)
+              _EmptyText(text: '아직 참여한 그룹이 없어요')
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    for (final group in groups) ...[
+                      if (group != groups.first) const SizedBox(height: 12),
+                      GroupCard(
+                        group: group,
+                        exerciseNames: groupExercises[group.id],
+                        onTap: () => context.push('/group/${group.id}'),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              itemBuilder: (context, index) => GroupCard(group: groups[index]),
-            ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.textColor});
+
+  final String title;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyText extends StatelessWidget {
+  const _EmptyText({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, color: AppColors.bg4),
       ),
     );
   }
@@ -274,6 +442,9 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       // 버튼마다 가장 큰 크기(47)의 자리를 고정으로 잡아두고, 그 가운데에서
@@ -291,15 +462,17 @@ class _NavButton extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              // 선택된 버튼은 사용자가 고른 테마 색을 따른다.
+              // 선택된 버튼만 반전시켜 검정 바탕에 흰 아이콘이 되게 한다.
               color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : AppColors.bg2,
+                  ? colorScheme.primary
+                  : (isDark ? AppColors.bg2 : AppColors.bg7),
             ),
             child: Icon(
               tab.icon,
               size: isSelected ? 24 : 20,
-              color: AppColors.bg7,
+              color: isSelected
+                  ? colorScheme.onPrimary
+                  : (isDark ? AppColors.bg9 : AppColors.bg0),
             ),
           ),
         ),

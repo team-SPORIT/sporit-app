@@ -97,7 +97,7 @@ class _AppInputDialogState extends State<AppInputDialog> {
         ),
         AppPillButton(
           label: widget.confirmText,
-          textColor: AppColors.bg9,
+          textColor: Theme.of(context).colorScheme.onPrimary,
           // 강조 버튼은 선택한 테마 색을 따른다.
           fillColor: _canSubmit
               ? Theme.of(context).colorScheme.primary

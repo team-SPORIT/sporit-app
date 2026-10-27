@@ -236,6 +236,10 @@ class _ShutterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 어두운 배경에서는 흰 버튼, 밝은 배경에서는 회색 버튼이어야 보인다.
+    final color = isDark ? AppColors.bg9 : AppColors.bg3;
+
     return GestureDetector(
       onTap: isBusy ? null : onTap,
       child: Container(
@@ -244,14 +248,14 @@ class _ShutterButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.bg9, width: 3),
+          border: Border.all(color: color, width: 3),
         ),
         child: Container(
           width: 62,
           height: 62,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isBusy ? AppColors.bg5 : AppColors.bg9,
+            color: isBusy ? AppColors.bg5 : color,
           ),
         ),
       ),
@@ -266,6 +270,9 @@ class _SwitchCameraButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? AppColors.bg9 : AppColors.bg5;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -274,9 +281,9 @@ class _SwitchCameraButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.bg9, width: 1.5),
+          border: Border.all(color: color, width: 1.5),
         ),
-        child: const Icon(Icons.cached, size: 24, color: AppColors.bg9),
+        child: Icon(Icons.cached, size: 24, color: color),
       ),
     );
   }

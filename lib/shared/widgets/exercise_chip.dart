@@ -13,6 +13,8 @@ class ExerciseChip extends StatelessWidget {
     this.isDeleting = false,
     this.isSelected = false,
     this.onTap,
+    this.color,
+    this.badge,
   });
 
   final String label;
@@ -27,13 +29,19 @@ class ExerciseChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
 
+  // 종목마다 지정한 색. 주면 글자와 테두리가 그 색이 된다.
+  final Color? color;
+
+  // 글자 옆에 작게 붙는 설명(예: 그룹종목).
+  final String? badge;
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isSelected
-        ? AppColors.bg9
-        : (isDark ? AppColors.bg9 : AppColors.bg1);
-    const borderColor = AppColors.bg4;
+        ? Theme.of(context).colorScheme.onPrimary
+        : (color ?? (isDark ? AppColors.bg9 : AppColors.bg1));
+    final borderColor = color ?? AppColors.bg4;
 
     return GestureDetector(
       onTap: onTap,
@@ -46,7 +54,9 @@ class ExerciseChip extends StatelessWidget {
           bottom: 10,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : null,
+          color: isSelected
+              ? (color ?? Theme.of(context).colorScheme.primary)
+              : null,
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: borderColor, width: 0.5),
         ),

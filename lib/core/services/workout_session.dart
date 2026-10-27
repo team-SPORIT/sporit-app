@@ -13,6 +13,7 @@ class WorkoutSession {
   const WorkoutSession({
     required this.startedAt,
     required this.pausedTotal,
+    required this.startPhotoPath,
     required this.photoPaths,
     this.pausedAt,
   });
@@ -25,12 +26,21 @@ class WorkoutSession {
   // 일시정지 중이면 멈춘 시각, 아니면 null
   final DateTime? pausedAt;
 
-  // 시작 사진부터 순서대로
+  // 운동을 시작하며 찍은 사진. 기록하기 화면에는 보이지 않고 게시할 때 함께 올린다.
+  final String startPhotoPath;
+
+  // 운동을 끝내며 찍은 사진. 서버가 한 장만 받으므로 최대 한 장이다.
   final List<String> photoPaths;
 
   // 파일이 실제로 남아 있는 사진만. 기기 저장공간이 정리돼 사라진 사진은 뺀다.
   List<String> get existingPhotoPaths =>
       photoPaths.where((path) => File(path).existsSync()).toList();
+
+  // 시작 사진이 아직 남아 있으면 그 경로, 지웠거나 사라졌으면 null.
+  String? get existingStartPhotoPath =>
+      startPhotoPath.isNotEmpty && File(startPhotoPath).existsSync()
+      ? startPhotoPath
+      : null;
 
   bool get isPaused => pausedAt != null;
 
@@ -43,12 +53,14 @@ class WorkoutSession {
     Duration? pausedTotal,
     DateTime? pausedAt,
     bool clearPausedAt = false,
+    String? startPhotoPath,
     List<String>? photoPaths,
   }) {
     return WorkoutSession(
       startedAt: startedAt,
       pausedTotal: pausedTotal ?? this.pausedTotal,
       pausedAt: clearPausedAt ? null : (pausedAt ?? this.pausedAt),
+      startPhotoPath: startPhotoPath ?? this.startPhotoPath,
       photoPaths: photoPaths ?? this.photoPaths,
     );
   }
@@ -57,6 +69,7 @@ class WorkoutSession {
     'startedAt': startedAt.millisecondsSinceEpoch,
     'pausedTotalMs': pausedTotal.inMilliseconds,
     'pausedAt': pausedAt?.millisecondsSinceEpoch,
+    'startPhotoPath': startPhotoPath,
     'photoPaths': photoPaths,
   };
 
@@ -68,6 +81,7 @@ class WorkoutSession {
       pausedAt: pausedAt == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(pausedAt),
+      startPhotoPath: json['startPhotoPath'] as String? ?? '',
       photoPaths: (json['photoPaths'] as List<dynamic>? ?? [])
           .map((path) => path as String)
           .toList(),
@@ -104,11 +118,14 @@ class WorkoutSessionController extends ValueNotifier<WorkoutSession?> {
     unawaited(_persist(newValue));
   }
 
-  Future<void> start(String firstPhotoPath) async {
+  // 서버가 시작/종료 사진 두 장을 요구하므로 시작 사진도 함께 보관한다.
+  // 다만 기록하기 화면에는 끝 사진만 보여준다.
+  Future<void> start(String startPhotoPath) async {
     value = WorkoutSession(
       startedAt: DateTime.now(),
       pausedTotal: Duration.zero,
-      photoPaths: [await _keep(firstPhotoPath)],
+      startPhotoPath: await _keep(startPhotoPath),
+      photoPaths: const [],
     );
   }
 
@@ -128,20 +145,45 @@ class WorkoutSessionController extends ValueNotifier<WorkoutSession?> {
     );
   }
 
-  Future<void> addPhoto(String path) async {
+  // 시작 사진을 다시 찍었을 때도 이전 것을 지우고 덮어쓴다.
+  Future<void> setStartPhoto(String path) async {
+    if (value == null) return;
+
     final kept = await _keep(path);
     final session = value;
     if (session == null) return;
-    value = session.copyWith(photoPaths: [...session.photoPaths, kept]);
+
+    unawaited(_deleteFile(session.startPhotoPath));
+    value = session.copyWith(startPhotoPath: kept);
+  }
+
+  // 끝 사진은 항상 한 장만 남긴다. 새로 찍으면 이전 사진을 지우고 덮어쓴다.
+  // (덧붙이면 끝내기를 여러 번 거칠 때마다 사진이 쌓인다.)
+  Future<void> setEndPhoto(String path) async {
+    if (value == null) return;
+
+    final kept = await _keep(path);
+    final session = value;
+    if (session == null) return;
+
+    for (final old in session.photoPaths) {
+      unawaited(_deleteFile(old));
+    }
+    value = session.copyWith(photoPaths: [kept]);
   }
 
   Future<void> removePhoto(String path) async {
     final session = value;
     if (session == null) return;
     value = session.copyWith(
+      startPhotoPath: session.startPhotoPath == path ? '' : null,
       photoPaths: session.photoPaths.where((p) => p != path).toList(),
     );
     // 보관해둔 파일도 함께 지운다.
+    await _deleteFile(path);
+  }
+
+  Future<void> _deleteFile(String path) async {
     try {
       await File(path).delete();
     } catch (_) {
@@ -168,8 +210,12 @@ class WorkoutSessionController extends ValueNotifier<WorkoutSession?> {
 
   void finish() {
     // 옮겨둔 사진 파일들도 함께 정리한다.
-    for (final path in value?.photoPaths ?? const <String>[]) {
-      unawaited(File(path).delete().catchError((_) => File(path)));
+    final session = value;
+    for (final path in [
+      if (session != null) session.startPhotoPath,
+      ...?session?.photoPaths,
+    ]) {
+      unawaited(_deleteFile(path));
     }
     value = null;
   }

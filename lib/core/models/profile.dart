@@ -1,4 +1,3 @@
-import '../../shared/app_theme.dart';
 import '../utils/kst_date.dart';
 
 // GET /profiles/me 응답
@@ -7,7 +6,6 @@ class Profile {
     required this.id,
     required this.nickname,
     required this.currentStreak,
-    required this.theme,
     required this.createdAt,
     this.lastRecordDate,
     this.profileImage,
@@ -16,8 +14,6 @@ class Profile {
   final String id;
   final String nickname;
   final int currentStreak;
-  final AppTheme theme;
-
   // 가입일. 캘린더에서 거슬러 올라갈 수 있는 가장 오래된 달의 기준이 된다.
   final DateTime createdAt;
 
@@ -45,7 +41,6 @@ class Profile {
       id: json['id'] as String,
       nickname: json['nickname'] as String,
       currentStreak: json['current_streak'] as int? ?? 0,
-      theme: AppTheme.fromApiValue(json['theme']),
       createdAt:
           DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),

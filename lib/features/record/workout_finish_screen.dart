@@ -12,10 +12,11 @@ class WorkoutFinishScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg0,
       appBar: AppBar(
-        backgroundColor: AppColors.bg0,
-        foregroundColor: AppColors.bg9,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.bg9
+            : AppColors.bg1,
         title: const Text('운동 끝내기', style: TextStyle(fontSize: 16)),
         titleSpacing: 0,
         leading: IconButton(
@@ -26,7 +27,7 @@ class WorkoutFinishScreen extends StatelessWidget {
       body: CameraView(
         bottomInset: MediaQuery.viewPaddingOf(context).bottom + 24,
         onCaptured: (photo) async {
-          await WorkoutSessionController.instance.addPhoto(photo.path);
+          await WorkoutSessionController.instance.setEndPhoto(photo.path);
           if (context.mounted) context.push('/record/form');
         },
       ),

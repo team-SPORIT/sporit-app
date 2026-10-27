@@ -3,16 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/models/profile.dart';
-import '../../core/models/user_exercise.dart';
+import '../../core/models/category.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/exercise_service.dart';
+import '../../core/services/category_service.dart';
 import '../../core/services/profile_controller.dart';
 import '../../core/services/profile_service.dart';
-import '../../core/services/theme_controller.dart';
 import '../../shared/app_colors.dart';
-import '../../shared/app_theme.dart';
 import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/app_input_dialog.dart';
+import 'widgets/add_exercise_dialog.dart';
 import '../../shared/widgets/app_pill_button.dart';
 import '../../shared/widgets/exercise_add_button.dart';
 import '../../shared/widgets/exercise_chip.dart';
@@ -29,12 +28,11 @@ class _MypageScreenState extends State<MypageScreen> {
   Profile? get _profile => ProfileController.instance.value;
   set _profile(Profile? profile) => ProfileController.instance.value = profile;
 
-  List<UserExercise> _exercises = [];
+  List<ExerciseCategory> _exercises = [];
   bool _isLoading = true;
   String? _loadError;
   // 삭제 요청이 끝나기 전에 같은 항목을 또 누르는 걸 막는다.
   final Set<String> _deletingIds = {};
-  bool _isSavingTheme = false;
   bool _isUploadingAvatar = false;
 
   @override
@@ -52,14 +50,13 @@ class _MypageScreenState extends State<MypageScreen> {
     try {
       final results = await Future.wait([
         ProfileService.instance.fetchMe(),
-        ExerciseService.instance.fetchMine(),
+        CategoryService.instance.fetchMine(),
       ]);
       if (!mounted) return;
       final profile = results[0] as Profile;
-      ThemeController.instance.value = profile.theme;
       setState(() {
         _profile = profile;
-        _exercises = results[1] as List<UserExercise>;
+        _exercises = results[1] as List<ExerciseCategory>;
         _isLoading = false;
       });
     } catch (e) {
@@ -79,18 +76,14 @@ class _MypageScreenState extends State<MypageScreen> {
   }
 
   Future<void> _handleAddExercise() async {
-    final name = await AppInputDialog.show(
-      context,
-      title: '선호하는 운동을 추가 해주세요',
-      hintText: '배드민턴, 농구',
-      confirmText: '추가하기',
-      // 서버의 name 컬럼이 VARCHAR(30)이라 입력도 같은 길이로 제한한다.
-      maxLength: 30,
-    );
-    if (name == null || name.isEmpty) return;
+    final created = await AddExerciseDialog.show(context);
+    if (created == null) return;
 
     try {
-      final added = await ExerciseService.instance.add(name);
+      final added = await CategoryService.instance.create(
+        name: created.name,
+        colorKey: created.colorKey,
+      );
       if (!mounted) return;
       setState(() => _exercises = [..._exercises, added]);
     } catch (e) {
@@ -98,12 +91,12 @@ class _MypageScreenState extends State<MypageScreen> {
     }
   }
 
-  Future<void> _handleDeleteExercise(UserExercise exercise) async {
+  Future<void> _handleDeleteExercise(ExerciseCategory exercise) async {
     if (_deletingIds.contains(exercise.id)) return;
     setState(() => _deletingIds.add(exercise.id));
 
     try {
-      await ExerciseService.instance.remove(exercise.id);
+      await CategoryService.instance.remove(exercise.id);
       if (!mounted) return;
       setState(() {
         _exercises = _exercises.where((e) => e.id != exercise.id).toList();
@@ -160,24 +153,6 @@ class _MypageScreenState extends State<MypageScreen> {
       setState(() => _profile = updated);
     } catch (e) {
       _showMessage('$e');
-    }
-  }
-
-  Future<void> _handleSelectTheme(AppTheme theme) async {
-    final previous = ThemeController.instance.value;
-    if (theme == previous || _isSavingTheme) return;
-
-    // 먼저 화면에 반영해서 색이 바로 바뀌는 걸 보여주고, 저장에 실패하면 되돌린다.
-    setState(() => _isSavingTheme = true);
-    ThemeController.instance.value = theme;
-
-    try {
-      await ProfileService.instance.updateTheme(theme);
-    } catch (e) {
-      ThemeController.instance.value = previous;
-      _showMessage('$e');
-    } finally {
-      if (mounted) setState(() => _isSavingTheme = false);
     }
   }
 
@@ -342,17 +317,6 @@ class _MypageScreenState extends State<MypageScreen> {
             ],
           ),
           const SizedBox(height: 32),
-          _SectionTitle(title: '테마', textColor: textColor),
-          const SizedBox(height: 16),
-          ValueListenableBuilder<AppTheme>(
-            valueListenable: ThemeController.instance,
-            builder: (context, selected, _) => _ThemeSelector(
-              selected: selected,
-              ringColor: textColor,
-              onSelected: _handleSelectTheme,
-            ),
-          ),
-          const SizedBox(height: 32),
           _SectionTitle(title: '선호 운동 관리', textColor: textColor),
           const SizedBox(height: 16),
           Wrap(
@@ -362,6 +326,7 @@ class _MypageScreenState extends State<MypageScreen> {
               for (final exercise in _exercises)
                 ExerciseChip(
                   label: exercise.name,
+                  color: exercise.color,
                   isDeleting: _deletingIds.contains(exercise.id),
                   onDelete: () => _handleDeleteExercise(exercise),
                 ),
@@ -498,67 +463,6 @@ class _NicknamePill extends StatelessWidget {
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: textColor,
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeSelector extends StatelessWidget {
-  const _ThemeSelector({
-    required this.selected,
-    required this.ringColor,
-    required this.onSelected,
-  });
-
-  final AppTheme selected;
-  final Color ringColor;
-  final ValueChanged<AppTheme> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final theme in AppTheme.values)
-          _ThemeCircle(
-            color: theme.color,
-            // 선택 표시는 테두리로 하고, 선택되지 않은 것도 투명 테두리를 둬서
-            // 원의 자리 크기가 달라지지 않게 한다.
-            borderColor: theme == selected ? ringColor : Colors.transparent,
-            onTap: () => onSelected(theme),
-          ),
-      ],
-    );
-  }
-}
-
-class _ThemeCircle extends StatelessWidget {
-  const _ThemeCircle({
-    required this.color,
-    required this.borderColor,
-    required this.onTap,
-  });
-
-  final Color color;
-  final Color borderColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: borderColor, width: 2),
-        ),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
       ),
     );

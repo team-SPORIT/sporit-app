@@ -33,7 +33,7 @@ class RecordScreen extends StatelessWidget {
           ),
           AppPillButton(
             label: '시작하기',
-            textColor: AppColors.bg9,
+            textColor: Theme.of(dialogContext).colorScheme.onPrimary,
             fillColor: Theme.of(dialogContext).colorScheme.primary,
             height: 48,
             onPressed: () => Navigator.pop(dialogContext, true),
